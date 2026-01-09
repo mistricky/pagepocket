@@ -81,7 +81,10 @@ describe("resource helpers", () => {
 
   test("downloadResource writes fetched content to disk", async () => {
     const originalFetch = globalThis.fetch;
-    globalThis.fetch = async () => {
+    let capturedHeaders: Record<string, string> | undefined;
+    globalThis.fetch = async (_input, init) => {
+      const headerValue = init?.headers as Record<string, string> | undefined;
+      capturedHeaders = headerValue;
       return new Response("test-body", {
         headers: { "content-type": "text/plain" }
       });
@@ -90,7 +93,8 @@ describe("resource helpers", () => {
     const tempDir = await fs.mkdtemp(path.join(os.tmpdir(), "webecho-resource-"));
     const { outputPath, filename, contentType, size } = await downloadResource(
       "https://example.com/assets/app.css",
-      tempDir
+      tempDir,
+      "https://example.com/page"
     );
 
     const saved = await fs.readFile(outputPath, "utf-8");
@@ -98,6 +102,7 @@ describe("resource helpers", () => {
     assert.equal(contentType, "text/plain");
     assert.equal(saved, "test-body");
     assert.equal(size, "test-body".length);
+    assert.equal(capturedHeaders?.referer, "https://example.com/page");
 
     await fs.rm(tempDir, { recursive: true, force: true });
     globalThis.fetch = originalFetch;

@@ -69,8 +69,12 @@ export const extractResourceUrls = (html: string, baseUrl: string) => {
   return { $, resourceUrls, srcsetItems };
 };
 
-export const downloadResource = async (url: string, outputDir: string) => {
-  const response = await fetch(url, { redirect: "follow" });
+export const downloadResource = async (url: string, outputDir: string, referer?: string) => {
+  const headers: Record<string, string> = {};
+  if (referer) {
+    headers.referer = referer;
+  }
+  const response = await fetch(url, { redirect: "follow", headers });
   const contentType = response.headers.get("content-type");
   const buffer = Buffer.from(await response.arrayBuffer());
   const urlPath = new URL(url).pathname;

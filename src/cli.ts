@@ -53,6 +53,7 @@ export default class WebechoCommand extends Command {
 
     const page = await browser.newPage();
     const navigationTimeoutMs = Number(process.env.WEBECHO_NAV_TIMEOUT_MS || "60000");
+    const pendingTimeoutMs = Number(process.env.WEBECHO_PENDING_TIMEOUT_MS || "40000");
     page.setDefaultNavigationTimeout(navigationTimeoutMs);
 
     // Accumulate network traffic so the replay script can serve responses offline.
@@ -74,6 +75,11 @@ export default class WebechoCommand extends Command {
 
         await page.waitForSelector("body", { timeout: 15000 });
         await page.waitForNetworkIdle({ idleTime: 2000, timeout: 30000 }).catch(() => undefined);
+        await page
+          .waitForFunction(() => (window as any).__webechoPendingRequests === 0, {
+            timeout: pendingTimeoutMs
+          })
+          .catch(() => undefined);
         await new Promise((resolve) => setTimeout(resolve, 2000));
         visitSpinner.succeed("Visited the target site");
 
@@ -138,7 +144,8 @@ export default class WebechoCommand extends Command {
         downloadSpinner.text = `Downloading ${resourceLabel}`;
         const { filename, contentType, size, outputPath } = await downloadResource(
           url,
-          resourcesDir
+          resourcesDir,
+          targetUrl
         );
         if ((contentType && contentType.includes("text/css")) || outputPath.endsWith(".css")) {
           await rewriteCssUrls(outputPath, url, dataUrlMap);

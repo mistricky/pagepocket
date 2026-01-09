@@ -16,6 +16,7 @@ export const buildPreloadScript = () => {
 
   const records = [];
   window.__webechoRecords = records;
+  window.__webechoPendingRequests = 0;
 
   const toAbsoluteUrl = (input) => {
     try {
@@ -43,6 +44,13 @@ export const buildPreloadScript = () => {
       return "";
     }
     return String(body);
+  };
+
+  const trackPendingStart = () => {
+    window.__webechoPendingRequests += 1;
+  };
+  const trackPendingEnd = () => {
+    window.__webechoPendingRequests = Math.max(0, window.__webechoPendingRequests - 1);
   };
 
 ${hackerScripts}

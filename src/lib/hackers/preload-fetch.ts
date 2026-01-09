@@ -7,6 +7,7 @@ export const preloadFetchRecorder: ScriptHacker = {
   // Record fetch calls and responses for replay.
   const originalFetch = window.fetch.bind(window);
   const recordFetch = async (input, init) => {
+    trackPendingStart();
     const url = typeof input === "string" ? toAbsoluteUrl(input) : toAbsoluteUrl(input.url);
     const method = init && init.method ? init.method : (typeof input === "string" ? "GET" : input.method || "GET");
     const requestBody = normalizeBody(init && init.body ? init.body : (typeof input === "string" ? undefined : input.body));
@@ -41,6 +42,8 @@ export const preloadFetchRecorder: ScriptHacker = {
         timestamp: Date.now()
       });
       throw error;
+    } finally {
+      trackPendingEnd();
     }
   };
 

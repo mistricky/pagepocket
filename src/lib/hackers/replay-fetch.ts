@@ -5,8 +5,13 @@ export const replayFetchResponder: ScriptHacker = {
   stage: "replay",
   build: () => `
   // Patch fetch to serve from recorded network data.
-  const originalFetch = window.fetch.bind(window);
+  const originalFetch = (typeof __webechoOriginalFetch === "function")
+    ? __webechoOriginalFetch
+    : window.fetch.bind(window);
   window.fetch = async (input, init = {}) => {
+    if (ready && typeof ready.then === "function") {
+      await ready;
+    }
     const url = typeof input === "string" ? input : input.url;
     const method = (init && init.method) || (typeof input === "string" ? "GET" : input.method || "GET");
     const body = init && init.body;

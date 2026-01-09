@@ -6,6 +6,7 @@ describe("buildPreloadScript", () => {
   test("includes recorder bootstrap and hackers", () => {
     const script = buildPreloadScript();
     assert.ok(script.includes("window.__webechoRecords"));
+    assert.ok(script.includes("window.__webechoPendingRequests"));
     assert.ok(script.includes("hacker:preload-fetch-recorder"));
     assert.ok(script.includes("hacker:preload-xhr-recorder"));
   });

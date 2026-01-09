@@ -15,10 +15,14 @@ export const buildReplayScript = (requestsPath: string, baseUrl: string) => {
   // Load the snapshot metadata before patching runtime APIs.
   const baseUrl = ${basePayload};
   const requestsUrl = ${requestsPayload};
+  const __webechoOriginalFetch = window.fetch ? window.fetch.bind(window) : null;
 
   const loadSnapshot = async () => {
     try {
-      const response = await fetch(requestsUrl);
+      if (!__webechoOriginalFetch) {
+        throw new Error("Fetch is unavailable");
+      }
+      const response = await __webechoOriginalFetch(requestsUrl);
       if (!response.ok) {
         throw new Error("Failed to load snapshot metadata");
       }
@@ -35,11 +39,11 @@ export const buildReplayScript = (requestsPath: string, baseUrl: string) => {
     }
   };
 
-  const bootstrap = async () => {
-    // Deserialize the snapshot and prepare lookup tables for offline responses.
-    const snapshot = (await loadSnapshot()) || {};
-    const records = snapshot.fetchXhrRecords || [];
-    const networkRecords = snapshot.networkRecords || [];
+  let records = [];
+  let networkRecords = [];
+  const byKey = new Map();
+  const localResourceSet = new Set();
+  const resourceUrlMap = new Map();
 
   const normalizeUrl = (input) => {
     try { return new URL(input, baseUrl).toString(); } catch { return input; }
@@ -53,34 +57,44 @@ export const buildReplayScript = (requestsPath: string, baseUrl: string) => {
 
   // Build a stable key so requests with identical method/url/body match the same response.
   const makeKey = (method, url, body) => method.toUpperCase() + " " + normalizeUrl(url) + " " + normalizeBody(body);
-  const byKey = new Map();
+  const primeLookups = (snapshot) => {
+    records = snapshot.fetchXhrRecords || [];
+    networkRecords = snapshot.networkRecords || [];
+    byKey.clear();
+    localResourceSet.clear();
+    resourceUrlMap.clear();
 
-  for (const record of records) {
-    if (!record || !record.url || !record.method) continue;
-    const key = makeKey(record.method, record.url, record.requestBody || "");
-    if (!byKey.has(key)) byKey.set(key, record);
-  }
-
-  for (const record of networkRecords) {
-    if (!record || !record.url || !record.method) continue;
-    const key = makeKey(record.method, record.url, record.requestBody || "");
-    if (!byKey.has(key)) byKey.set(key, record);
-  }
-
-  // Track local resource files and map original URLs to local paths.
-  const localResourceSet = new Set();
-  const resourceUrlMap = new Map();
-  const resourceList = snapshot.resources || [];
-
-  for (const item of resourceList) {
-    if (!item || !item.localPath) continue;
-    localResourceSet.add(item.localPath);
-    localResourceSet.add("./" + item.localPath);
-
-    if (item.url) {
-      resourceUrlMap.set(normalizeUrl(item.url), item.localPath);
+    for (const record of records) {
+      if (!record || !record.url || !record.method) continue;
+      const key = makeKey(record.method, record.url, record.requestBody || "");
+      if (!byKey.has(key)) byKey.set(key, record);
     }
-  }
+
+    for (const record of networkRecords) {
+      if (!record || !record.url || !record.method) continue;
+      const key = makeKey(record.method, record.url, record.requestBody || "");
+      if (!byKey.has(key)) byKey.set(key, record);
+    }
+
+    // Track local resource files and map original URLs to local paths.
+    const resourceList = snapshot.resources || [];
+    for (const item of resourceList) {
+      if (!item || !item.localPath) continue;
+      localResourceSet.add(item.localPath);
+      localResourceSet.add("./" + item.localPath);
+
+      if (item.url) {
+        resourceUrlMap.set(normalizeUrl(item.url), item.localPath);
+      }
+    }
+  };
+
+  const ready = (async () => {
+    // Deserialize the snapshot and prepare lookup tables for offline responses.
+    const snapshot = (await loadSnapshot()) || {};
+    primeLookups(snapshot);
+    return snapshot;
+  })();
 
   const isLocalResource = (value) => {
     if (!value) return false;
@@ -194,9 +208,6 @@ export const buildReplayScript = (requestsPath: string, baseUrl: string) => {
   };
 
 ${hackerScripts}
-  };
-
-  bootstrap();
 })();
 </script>
 `;

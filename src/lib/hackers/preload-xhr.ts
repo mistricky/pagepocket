@@ -47,8 +47,10 @@ export const preloadXhrRecorder: ScriptHacker = {
       });
 
       xhr.removeEventListener("loadend", onLoadEnd);
+      trackPendingEnd();
     };
 
+    trackPendingStart();
     xhr.addEventListener("loadend", onLoadEnd);
     return originalSend.call(xhr, body);
   };

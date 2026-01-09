@@ -9,6 +9,27 @@ export const replayDomRewriter: ScriptHacker = {
   const emptyScript = "data:text/javascript,/*webecho-missing*/";
   const emptyStyle = "data:text/css,/*webecho-missing*/";
 
+  let readyResolved = false;
+  if (ready && typeof ready.then === "function") {
+    ready.then(() => {
+      readyResolved = true;
+    });
+  } else {
+    readyResolved = true;
+  }
+
+  const onReady = (callback) => {
+    if (readyResolved) {
+      callback();
+      return;
+    }
+    if (ready && typeof ready.then === "function") {
+      ready.then(callback);
+    } else {
+      callback();
+    }
+  };
+
   // Rewrite srcset values so each candidate is local or data-backed.
   const rewriteSrcset = (value) => {
     if (!value) return value;
@@ -32,6 +53,10 @@ export const replayDomRewriter: ScriptHacker = {
   // Rewrite element attributes to local files or data URLs.
   const rewriteElement = (element) => {
     if (!element || !element.getAttribute) return;
+    if (!readyResolved) {
+      onReady(() => rewriteElement(element));
+      return;
+    }
     const tag = (element.tagName || "").toLowerCase();
     if (tag === "img" || tag === "source" || tag === "video" || tag === "audio" || tag === "script" || tag === "iframe") {
       const src = element.getAttribute("src");
@@ -73,6 +98,11 @@ export const replayDomRewriter: ScriptHacker = {
   Element.prototype.setAttribute = function(name, value) {
     const attr = String(name).toLowerCase();
     if (attr === "src" || attr === "href" || attr === "srcset") {
+      if (!readyResolved) {
+        const pendingValue = String(value);
+        onReady(() => originalSetAttribute.call(this, name, pendingValue));
+        return;
+      }
       if (attr === "srcset") {
         const rewritten = rewriteSrcset(String(value));
         return originalSetAttribute.call(this, name, rewritten);
@@ -120,52 +150,114 @@ export const replayDomRewriter: ScriptHacker = {
   };
 
   patchProperty(HTMLImageElement.prototype, "src", function(value, setter) {
-    if (isLocalResource(String(value))) {
-      setter.call(this, value);
+    const rawValue = String(value);
+    if (!readyResolved) {
+      onReady(() => {
+        if (isLocalResource(rawValue)) {
+          setter.call(this, rawValue);
+          return;
+        }
+        const localPath = findLocalPath(rawValue);
+        if (localPath) {
+          setter.call(this, localPath);
+          return;
+        }
+        const record = findByUrl(rawValue);
+        const next = record ? toDataUrl(record) : transparentGif;
+        setter.call(this, next);
+      });
       return;
     }
-    const localPath = findLocalPath(String(value));
+    if (isLocalResource(rawValue)) {
+      setter.call(this, rawValue);
+      return;
+    }
+    const localPath = findLocalPath(rawValue);
     if (localPath) {
       setter.call(this, localPath);
       return;
     }
-    const record = findByUrl(String(value));
+    const record = findByUrl(rawValue);
     const next = record ? toDataUrl(record) : transparentGif;
     setter.call(this, next);
   });
 
   patchProperty(HTMLScriptElement.prototype, "src", function(value, setter) {
-    if (isLocalResource(String(value))) {
-      setter.call(this, value);
+    const rawValue = String(value);
+    if (!readyResolved) {
+      onReady(() => {
+        if (isLocalResource(rawValue)) {
+          setter.call(this, rawValue);
+          return;
+        }
+        const localPath = findLocalPath(rawValue);
+        if (localPath) {
+          setter.call(this, localPath);
+          return;
+        }
+        const record = findByUrl(rawValue);
+        const next = record ? toDataUrl(record) : emptyScript;
+        setter.call(this, next);
+      });
       return;
     }
-    const localPath = findLocalPath(String(value));
+    if (isLocalResource(rawValue)) {
+      setter.call(this, rawValue);
+      return;
+    }
+    const localPath = findLocalPath(rawValue);
     if (localPath) {
       setter.call(this, localPath);
       return;
     }
-    const record = findByUrl(String(value));
+    const record = findByUrl(rawValue);
     const next = record ? toDataUrl(record) : emptyScript;
     setter.call(this, next);
   });
 
   patchProperty(HTMLLinkElement.prototype, "href", function(value, setter) {
-    if (isLocalResource(String(value))) {
-      setter.call(this, value);
+    const rawValue = String(value);
+    if (!readyResolved) {
+      onReady(() => {
+        if (isLocalResource(rawValue)) {
+          setter.call(this, rawValue);
+          return;
+        }
+        const localPath = findLocalPath(rawValue);
+        if (localPath) {
+          setter.call(this, localPath);
+          return;
+        }
+        const record = findByUrl(rawValue);
+        const next = record ? toDataUrl(record, "text/css") : emptyStyle;
+        setter.call(this, next);
+      });
       return;
     }
-    const localPath = findLocalPath(String(value));
+    if (isLocalResource(rawValue)) {
+      setter.call(this, rawValue);
+      return;
+    }
+    const localPath = findLocalPath(rawValue);
     if (localPath) {
       setter.call(this, localPath);
       return;
     }
-    const record = findByUrl(String(value));
+    const record = findByUrl(rawValue);
     const next = record ? toDataUrl(record, "text/css") : emptyStyle;
     setter.call(this, next);
   });
 
   patchProperty(HTMLImageElement.prototype, "srcset", function(value, setter) {
-    const next = rewriteSrcset(String(value));
+    const rawValue = String(value);
+    if (!readyResolved) {
+      onReady(() => {
+        const next = rewriteSrcset(rawValue);
+        setter.call(this, next);
+      });
+      return;
+    }
+    const next = rewriteSrcset(rawValue);
     setter.call(this, next);
   });
 
