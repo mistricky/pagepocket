@@ -6,46 +6,60 @@ export const buildReplayScript = (snapshot: SnapshotData, baseUrl: string) => {
   return `
 <script>
 (function(){
+  // Deserialize the snapshot and prepare lookup tables for offline responses.
   const snapshot = ${payload} || {};
   const records = snapshot.fetchXhrRecords || [];
   const networkRecords = snapshot.networkRecords || [];
   const baseUrl = ${basePayload};
+
   const normalizeUrl = (input) => {
     try { return new URL(input, baseUrl).toString(); } catch { return input; }
   };
+
   const normalizeBody = (body) => {
     if (body === undefined || body === null) return "";
     if (typeof body === "string") return body;
     try { return String(body); } catch { return ""; }
   };
+
+  // Build a stable key so requests with identical method/url/body match the same response.
   const makeKey = (method, url, body) => method.toUpperCase() + " " + normalizeUrl(url) + " " + normalizeBody(body);
   const byKey = new Map();
+
   for (const record of records) {
     if (!record || !record.url || !record.method) continue;
     const key = makeKey(record.method, record.url, record.requestBody || "");
     if (!byKey.has(key)) byKey.set(key, record);
   }
+
   for (const record of networkRecords) {
     if (!record || !record.url || !record.method) continue;
     const key = makeKey(record.method, record.url, record.requestBody || "");
     if (!byKey.has(key)) byKey.set(key, record);
   }
+
+  // Track local resource files and map original URLs to local paths.
   const localResourceSet = new Set();
   const resourceUrlMap = new Map();
   const resourceList = snapshot.resources || [];
+
   for (const item of resourceList) {
     if (!item || !item.localPath) continue;
     localResourceSet.add(item.localPath);
     localResourceSet.add("./" + item.localPath);
+
     if (item.url) {
       resourceUrlMap.set(normalizeUrl(item.url), item.localPath);
     }
   }
+
   const isLocalResource = (value) => {
     if (!value) return false;
     if (value.startsWith("data:") || value.startsWith("blob:")) return true;
     return localResourceSet.has(value);
   };
+
+  // Lookup helpers for request records and local assets.
   const findRecord = (method, url, body) => {
     const key = makeKey(method, url, body);
     if (byKey.has(key)) return byKey.get(key);
@@ -54,6 +68,7 @@ export const buildReplayScript = (snapshot: SnapshotData, baseUrl: string) => {
     const getKey = makeKey("GET", url, "");
     return byKey.get(getKey);
   };
+
   const findByUrl = (url) => {
     if (isLocalResource(url)) return null;
     const normalized = normalizeUrl(url);
@@ -61,35 +76,41 @@ export const buildReplayScript = (snapshot: SnapshotData, baseUrl: string) => {
     if (direct) return direct;
     return byKey.get(makeKey("GET", url, ""));
   };
+
   const findLocalPath = (url) => {
     if (!url) return null;
     const normalized = normalizeUrl(url);
     return resourceUrlMap.get(normalized) || null;
   };
+
+  // Safe property injection for emulating XHR state transitions.
   const defineProp = (obj, key, value) => {
     try {
       Object.defineProperty(obj, key, { value, configurable: true });
     } catch {}
   };
+
+  // Base64 helpers for binary payloads.
   const decodeBase64 = (input) => {
     try {
       const binary = atob(input || "");
       const bytes = new Uint8Array(binary.length);
-      for (let i = 0; i < binary.length; i++) {
-        bytes[i] = binary.charCodeAt(i);
-      }
+
+      Array.from(binary).forEach((char, index) => {
+        bytes[index] = char.charCodeAt(0);
+      });
+
       return bytes;
     } catch {
       return new Uint8Array();
     }
   };
+
   const bytesToBase64 = (bytes) => {
-    let binary = "";
-    for (let i = 0; i < bytes.length; i++) {
-      binary += String.fromCharCode(bytes[i]);
-    }
+    const binary = Array.from(bytes, (value) => String.fromCharCode(value)).join("");
     return btoa(binary);
   };
+
   const textToBase64 = (text) => {
     try {
       const bytes = new TextEncoder().encode(text || "");
@@ -98,6 +119,8 @@ export const buildReplayScript = (snapshot: SnapshotData, baseUrl: string) => {
       return btoa(text || "");
     }
   };
+
+  // Resolve a content type from recorded response headers.
   const getContentType = (record) => {
     const headers = record.responseHeaders || {};
     for (const key in headers) {
@@ -107,17 +130,22 @@ export const buildReplayScript = (snapshot: SnapshotData, baseUrl: string) => {
     }
     return "application/octet-stream";
   };
+
+  // Turn a recorded response into a data URL for inline usage.
   const toDataUrl = (record, fallbackType) => {
     if (!record) return "";
     const contentType = getContentType(record) || fallbackType || "application/octet-stream";
     if (record.responseEncoding === "base64" && record.responseBodyBase64) {
       return "data:" + contentType + ";base64," + record.responseBodyBase64;
     }
+
     if (record.responseBody) {
       return "data:" + contentType + ";base64," + textToBase64(record.responseBody);
     }
     return "data:" + (fallbackType || "application/octet-stream") + ",";
   };
+
+  // Build a real Response object from the recorded payload.
   const responseFromRecord = (record) => {
     const headers = new Headers(record.responseHeaders || {});
     if (record.responseEncoding === "base64" && record.responseBodyBase64) {
@@ -135,6 +163,8 @@ export const buildReplayScript = (snapshot: SnapshotData, baseUrl: string) => {
       headers
     });
   };
+
+  // Patch fetch to serve from recorded network data.
   const originalFetch = window.fetch.bind(window);
   window.fetch = async (input, init = {}) => {
     const url = typeof input === "string" ? input : input.url;
@@ -146,6 +176,8 @@ export const buildReplayScript = (snapshot: SnapshotData, baseUrl: string) => {
     }
     return new Response("", { status: 404, statusText: "Not Found" });
   };
+
+  // Patch XHR so app code sees consistent responses offline.
   const originalOpen = XMLHttpRequest.prototype.open;
   const originalSend = XMLHttpRequest.prototype.send;
   XMLHttpRequest.prototype.open = function(method, url, ...rest) {
@@ -162,6 +194,7 @@ export const buildReplayScript = (snapshot: SnapshotData, baseUrl: string) => {
       const responseText = record.responseBody || "";
       const status = record.status || 200;
       const statusText = record.statusText || "OK";
+
       setTimeout(() => {
         defineProp(xhr, "readyState", 4);
         defineProp(xhr, "status", status);
@@ -192,6 +225,7 @@ export const buildReplayScript = (snapshot: SnapshotData, baseUrl: string) => {
     const xhr = this;
     const status = 404;
     const statusText = "Not Found";
+
     setTimeout(() => {
       defineProp(xhr, "readyState", 4);
       defineProp(xhr, "status", status);
@@ -209,9 +243,13 @@ export const buildReplayScript = (snapshot: SnapshotData, baseUrl: string) => {
     }, 0);
     return;
   };
+
+  // Placeholder data URLs for missing resources.
   const transparentGif = "data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///ywAAAAAAQABAAACAUwAOw==";
   const emptyScript = "data:text/javascript,/*websnap-missing*/";
   const emptyStyle = "data:text/css,/*websnap-missing*/";
+
+  // Rewrite srcset values so each candidate is local or data-backed.
   const rewriteSrcset = (value) => {
     if (!value) return value;
     return value.split(",").map((part) => {
@@ -230,6 +268,8 @@ export const buildReplayScript = (snapshot: SnapshotData, baseUrl: string) => {
       return descriptor ? replacement + " " + descriptor : replacement;
     }).join(", ");
   };
+
+  // Rewrite element attributes to local files or data URLs.
   const rewriteElement = (element) => {
     if (!element || !element.getAttribute) return;
     const tag = (element.tagName || "").toLowerCase();
@@ -246,6 +286,7 @@ export const buildReplayScript = (snapshot: SnapshotData, baseUrl: string) => {
         element.setAttribute("src", record ? toDataUrl(record) : fallback);
       }
     }
+
     if (tag === "link") {
       const href = element.getAttribute("href");
       if (href && !isLocalResource(href) && !href.startsWith("data:") && !href.startsWith("blob:")) {
@@ -260,11 +301,14 @@ export const buildReplayScript = (snapshot: SnapshotData, baseUrl: string) => {
         element.setAttribute("href", record ? toDataUrl(record, "text/css") : fallback);
       }
     }
+
     const srcset = element.getAttribute("srcset");
     if (srcset) {
       element.setAttribute("srcset", rewriteSrcset(srcset));
     }
   };
+
+  // Intercept DOM attribute writes to keep resources local.
   const originalSetAttribute = Element.prototype.setAttribute;
   Element.prototype.setAttribute = function(name, value) {
     const attr = String(name).toLowerCase();
@@ -273,6 +317,7 @@ export const buildReplayScript = (snapshot: SnapshotData, baseUrl: string) => {
         const rewritten = rewriteSrcset(String(value));
         return originalSetAttribute.call(this, name, rewritten);
       }
+
       if (isLocalResource(String(value))) {
         return originalSetAttribute.call(this, name, value);
       }
@@ -298,6 +343,8 @@ export const buildReplayScript = (snapshot: SnapshotData, baseUrl: string) => {
     }
     return originalSetAttribute.call(this, name, value);
   };
+
+  // Patch property setters (e.g. img.src) so direct assignments are rewritten.
   const patchProperty = (proto, prop, handler) => {
     try {
       const desc = Object.getOwnPropertyDescriptor(proto, prop);
@@ -311,6 +358,7 @@ export const buildReplayScript = (snapshot: SnapshotData, baseUrl: string) => {
       });
     } catch {}
   };
+
   patchProperty(HTMLImageElement.prototype, "src", function(value, setter) {
     if (isLocalResource(String(value))) {
       setter.call(this, value);
@@ -325,6 +373,7 @@ export const buildReplayScript = (snapshot: SnapshotData, baseUrl: string) => {
     const next = record ? toDataUrl(record) : transparentGif;
     setter.call(this, next);
   });
+
   patchProperty(HTMLScriptElement.prototype, "src", function(value, setter) {
     if (isLocalResource(String(value))) {
       setter.call(this, value);
@@ -339,6 +388,7 @@ export const buildReplayScript = (snapshot: SnapshotData, baseUrl: string) => {
     const next = record ? toDataUrl(record) : emptyScript;
     setter.call(this, next);
   });
+
   patchProperty(HTMLLinkElement.prototype, "href", function(value, setter) {
     if (isLocalResource(String(value))) {
       setter.call(this, value);
@@ -353,10 +403,13 @@ export const buildReplayScript = (snapshot: SnapshotData, baseUrl: string) => {
     const next = record ? toDataUrl(record, "text/css") : emptyStyle;
     setter.call(this, next);
   });
+
   patchProperty(HTMLImageElement.prototype, "srcset", function(value, setter) {
     const next = rewriteSrcset(String(value));
     setter.call(this, next);
   });
+
+  // Observe DOM mutations and rewrite any new elements or attributes.
   const observer = new MutationObserver((mutations) => {
     for (const mutation of mutations) {
       if (mutation.type === "attributes" && mutation.target) {
@@ -373,13 +426,17 @@ export const buildReplayScript = (snapshot: SnapshotData, baseUrl: string) => {
       }
     }
   });
+
   observer.observe(document.documentElement, {
     attributes: true,
     childList: true,
     subtree: true,
     attributeFilter: ["src", "href", "srcset"]
   });
+
   document.querySelectorAll("img,source,video,audio,script,link,iframe").forEach((el) => rewriteElement(el));
+
+  // Stub beacon calls so analytics doesn't leak outside the snapshot.
   if (navigator.sendBeacon) {
     const originalBeacon = navigator.sendBeacon.bind(navigator);
     navigator.sendBeacon = (url, data) => {
@@ -391,6 +448,8 @@ export const buildReplayScript = (snapshot: SnapshotData, baseUrl: string) => {
     };
     navigator.sendBeacon.__websnapOriginal = originalBeacon;
   }
+
+  // Stub WebSocket/EventSource to prevent live network connections.
   if (window.WebSocket) {
     const OriginalWebSocket = window.WebSocket;
     window.WebSocket = function(url, protocols) {
@@ -407,6 +466,7 @@ export const buildReplayScript = (snapshot: SnapshotData, baseUrl: string) => {
     };
     window.WebSocket.__websnapOriginal = OriginalWebSocket;
   }
+
   if (window.EventSource) {
     const OriginalEventSource = window.EventSource;
     window.EventSource = function(url) {
