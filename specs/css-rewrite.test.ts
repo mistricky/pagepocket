@@ -25,10 +25,7 @@ describe("css-rewrite", () => {
     ];
 
     const map = buildDataUrlMap(records);
-    assert.equal(
-      map.get("https://example.com/asset.png"),
-      "data:image/png;base64,AAAB"
-    );
+    assert.equal(map.get("https://example.com/asset.png"), "data:image/png;base64,AAAB");
     assert.equal(map.has("https://example.com/skip.png"), false);
   });
 
