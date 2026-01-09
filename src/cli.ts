@@ -26,22 +26,12 @@ export default class WebechoCommand extends Command {
   static flags = {
     help: Flags.help({
       char: "h"
-    }),
-    "single-file": Flags.boolean({
-      char: "s",
-      description: "Save the snapshot as a single file",
-      default: false
     })
   };
 
   async run() {
-    const { args, flags } = await this.parse(WebechoCommand);
+    const { args } = await this.parse(WebechoCommand);
     const targetUrl = args.url;
-
-    if (flags["single-file"]) {
-      this.log("TODO: single-file snapshots are not implemented yet.");
-      return;
-    }
 
     // Build the preload script so it can record fetch/XHR data in the page context.
     const preloadScript = buildPreloadScript();
