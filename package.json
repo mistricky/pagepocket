@@ -18,6 +18,7 @@
   "license": "ISC",
   "packageManager": "pnpm@10.25.0",
   "dependencies": {
+    "@oclif/core": "^4.0.9",
     "cheerio": "^1.0.0-rc.12",
     "puppeteer": "^23.11.1"
   },
