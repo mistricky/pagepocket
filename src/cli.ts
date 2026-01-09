@@ -5,11 +5,12 @@ import path from "node:path";
 import * as cheerio from "cheerio";
 import puppeteer from "puppeteer";
 import { buildDataUrlMap, rewriteCssUrls } from "./lib/css-rewrite";
-import { isTextResponse } from "./lib/content-type";
 import { safeFilename } from "./lib/filename";
+import { applyCaptureHackers } from "./lib/hackers";
 import { buildReplayScript } from "./lib/replay-script";
 import { applyResourceMapToDom, downloadResource, extractResourceUrls } from "./lib/resources";
 import type { NetworkRecord, SnapshotData } from "./lib/types";
+import { buildPreloadScript } from "./preload";
 
 const usage = () => {
   return "Usage: websnap <url>";
@@ -22,9 +23,8 @@ const main = async () => {
     process.exit(1);
   }
 
-  // Load the preload script so it can record fetch/XHR data in the page context.
-  const preloadPath = path.join(__dirname, "preload.js");
-  const preloadScript = await fs.readFile(preloadPath, "utf-8");
+  // Build the preload script so it can record fetch/XHR data in the page context.
+  const preloadScript = buildPreloadScript();
 
   // Launch a headless browser to capture both DOM and network activity.
   const browser = await puppeteer.launch({
@@ -32,68 +32,10 @@ const main = async () => {
   });
 
   const page = await browser.newPage();
-  await page.setRequestInterception(true);
 
   // Accumulate network traffic so the replay script can serve responses offline.
   const networkRecords: NetworkRecord[] = [];
-
-  page.on("request", (request) => {
-    request.continue().catch(() => undefined);
-  });
-
-  page.on("response", async (response) => {
-    const request = response.request();
-    const url = response.url();
-    const headers = response.headers();
-    const requestHeaders = request.headers();
-    const requestBody = request.postData() || "";
-
-    // Capture the response body while preserving encoding for replay.
-    const { responseBody, responseBodyBase64, responseEncoding, error } = await (async () => {
-      try {
-        const buffer = await response.buffer();
-        const contentType = headers["content-type"] || "";
-
-        if (isTextResponse(contentType)) {
-          return {
-            responseBody: buffer.toString("utf-8"),
-            responseBodyBase64: undefined,
-            responseEncoding: "text" as const,
-            error: undefined
-          };
-        }
-
-        return {
-          responseBody: undefined,
-          responseBodyBase64: buffer.toString("base64"),
-          responseEncoding: "base64" as const,
-          error: undefined
-        };
-      } catch (err: any) {
-        return {
-          responseBody: undefined,
-          responseBodyBase64: undefined,
-          responseEncoding: undefined,
-          error: String(err)
-        };
-      }
-    })();
-
-    networkRecords.push({
-      url,
-      method: request.method(),
-      requestHeaders,
-      requestBody,
-      status: response.status(),
-      statusText: response.statusText(),
-      responseHeaders: headers,
-      responseBody,
-      responseBodyBase64,
-      responseEncoding,
-      error,
-      timestamp: Date.now()
-    });
-  });
+  await applyCaptureHackers({ stage: "capture", page, networkRecords });
 
   // Inject the recording script before any document scripts run.
   await page.evaluateOnNewDocument(preloadScript);
