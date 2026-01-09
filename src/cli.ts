@@ -2,6 +2,8 @@ import fs from "node:fs/promises";
 import path from "node:path";
 import * as cheerio from "cheerio";
 import { Args, Command, Flags } from "@oclif/core";
+import chalk from "chalk";
+import ora from "ora";
 import puppeteer from "puppeteer";
 import { buildDataUrlMap, rewriteCssUrls } from "./lib/css-rewrite";
 import { safeFilename } from "./lib/filename";
@@ -60,6 +62,8 @@ export default class WebechoCommand extends Command {
     // Inject the recording script before any document scripts run.
     await page.evaluateOnNewDocument(preloadScript);
 
+    const visitSpinner = ora("Visiting the target site").start();
+
     // Navigate, wait for the page to settle, then capture HTML and recorded requests.
     const snapshot = await (async () => {
       try {
@@ -71,6 +75,7 @@ export default class WebechoCommand extends Command {
         await page.waitForSelector("body", { timeout: 15000 });
         await page.waitForNetworkIdle({ idleTime: 2000, timeout: 30000 }).catch(() => undefined);
         await new Promise((resolve) => setTimeout(resolve, 2000));
+        visitSpinner.succeed("Visited the target site");
 
         const responseHtml = response ? await response.text() : "";
         const resolvedHtml = responseHtml || (await page.content());
@@ -85,6 +90,9 @@ export default class WebechoCommand extends Command {
           html: resolvedHtml,
           fetchXhrRecords: resolvedFetchXhrRecords
         };
+      } catch (error) {
+        visitSpinner.fail("Failed to visit the target site");
+        throw error;
       } finally {
         await page.close();
         await browser.close();
@@ -106,6 +114,9 @@ export default class WebechoCommand extends Command {
     const { $, resourceUrls, srcsetItems } = extractResourceUrls(html, targetUrl);
     const resourceMap = new Map<string, string>();
     const resourceMeta: SnapshotData["resources"] = [];
+    const downloadSpinner = ora("Downloading resources").start();
+    let downloadedCount = 0;
+    let failedCount = 0;
 
     // Download external assets to disk and track their local locations.
     for (const resource of resourceUrls) {
@@ -115,6 +126,16 @@ export default class WebechoCommand extends Command {
       }
 
       try {
+        const resourceLabel = (() => {
+          try {
+            const pathname = new URL(url).pathname;
+            const basename = path.basename(pathname);
+            return basename || url;
+          } catch {
+            return url;
+          }
+        })();
+        downloadSpinner.text = `Downloading ${resourceLabel}`;
         const { filename, contentType, size, outputPath } = await downloadResource(
           url,
           resourcesDir
@@ -130,10 +151,17 @@ export default class WebechoCommand extends Command {
           contentType,
           size
         });
+        downloadedCount += 1;
       } catch {
+        failedCount += 1;
         continue;
       }
     }
+    const downloadSummary =
+      failedCount > 0
+        ? `Resources downloaded (${downloadedCount} saved, ${failedCount} failed)`
+        : `Resources downloaded (${downloadedCount} saved)`;
+    downloadSpinner.succeed(downloadSummary);
 
     // Rewrite DOM references to point at local assets.
     applyResourceMapToDom($, resourceUrls, srcsetItems, targetUrl, resourceMap, assetsDirName);
@@ -161,8 +189,9 @@ export default class WebechoCommand extends Command {
     await fs.writeFile(outputRequestsPath, JSON.stringify(snapshotData, null, 2), "utf-8");
     await fs.writeFile(outputHtmlPath, $.html(), "utf-8");
 
-    this.log(`Saved ${outputHtmlPath}`);
-    this.log(`Saved ${outputRequestsPath}`);
-    this.log(`Saved resources to ${resourcesDir}`);
+    this.log(chalk.green("All done! Snapshot created."));
+    this.log(`HTML saved to ${chalk.cyan(outputHtmlPath)}`);
+    this.log(`Requests saved to ${chalk.cyan(outputRequestsPath)}`);
+    this.log(`Resources saved to ${chalk.cyan(resourcesDir)}`);
   }
 }
