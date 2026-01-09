@@ -1,3 +1,10 @@
+
+<p align="center">
+
+<img src="/doc/logo.png" width="500" alt="Neovim" />
+
+</p>
+
 # PagePocket
 
 PagePocket is a webpage snapshot tool. Given a URL, it loads the page in a headless browser, records network activity, and rewrites remote resources to local files so the page can be viewed offline.
