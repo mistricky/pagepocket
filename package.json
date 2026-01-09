@@ -1,5 +1,5 @@
 {
-  "name": "webecho",
+  "name": "pagepocket",
   "version": "0.2.2",
   "description": "",
   "main": "dist/index.js",
@@ -11,7 +11,7 @@
     "test": "tsx --test specs/**/*.test.ts"
   },
   "bin": {
-    "webecho": "dist/index.js"
+    "pp": "dist/index.js"
   },
   "files": [
     "dist"
@@ -39,7 +39,7 @@
     ]
   },
   "oclif": {
-    "bin": "webecho",
+    "bin": "pp",
     "commands": {
       "strategy": "single",
       "target": "dist/cli.js"

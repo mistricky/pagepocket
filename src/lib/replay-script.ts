@@ -15,14 +15,14 @@ export const buildReplayScript = (requestsPath: string, baseUrl: string) => {
   // Load the snapshot metadata before patching runtime APIs.
   const baseUrl = ${basePayload};
   const requestsUrl = ${requestsPayload};
-  const __webechoOriginalFetch = window.fetch ? window.fetch.bind(window) : null;
+  const __pagepocketOriginalFetch = window.fetch ? window.fetch.bind(window) : null;
 
   const loadSnapshot = async () => {
     try {
-      if (!__webechoOriginalFetch) {
+      if (!__pagepocketOriginalFetch) {
         throw new Error("Fetch is unavailable");
       }
-      const response = await __webechoOriginalFetch(requestsUrl);
+      const response = await __pagepocketOriginalFetch(requestsUrl);
       if (!response.ok) {
         throw new Error("Failed to load snapshot metadata");
       }

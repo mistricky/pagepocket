@@ -30,7 +30,7 @@ describe("css-rewrite", () => {
   });
 
   test("rewrites css url() values to data urls", async () => {
-    const tempDir = await fs.mkdtemp(path.join(os.tmpdir(), "webecho-css-"));
+    const tempDir = await fs.mkdtemp(path.join(os.tmpdir(), "pagepocket-css-"));
     const cssPath = path.join(tempDir, "styles.css");
     const cssUrl = "https://example.com/styles.css";
     await fs.writeFile(

@@ -50,6 +50,6 @@ export const preloadFetchRecorder: ScriptHacker = {
   window.fetch = (input, init) => {
     return recordFetch(input, init);
   };
-  window.fetch.__webechoOriginal = originalFetch;
+  window.fetch.__pagepocketOriginal = originalFetch;
 `
 };

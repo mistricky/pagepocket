@@ -13,7 +13,7 @@ import { applyResourceMapToDom, downloadResource, extractResourceUrls } from "./
 import type { NetworkRecord, SnapshotData } from "./lib/types";
 import { buildPreloadScript } from "./preload";
 
-export default class WebechoCommand extends Command {
+export default class PagepocketCommand extends Command {
   static description = "Save a snapshot of a web page.";
 
   static args = {
@@ -30,7 +30,7 @@ export default class WebechoCommand extends Command {
   };
 
   async run() {
-    const { args } = await this.parse(WebechoCommand);
+    const { args } = await this.parse(PagepocketCommand);
     const targetUrl = args.url;
 
     // Build the preload script so it can record fetch/XHR data in the page context.
@@ -42,8 +42,8 @@ export default class WebechoCommand extends Command {
     });
 
     const page = await browser.newPage();
-    const navigationTimeoutMs = Number(process.env.WEBECHO_NAV_TIMEOUT_MS || "60000");
-    const pendingTimeoutMs = Number(process.env.WEBECHO_PENDING_TIMEOUT_MS || "40000");
+    const navigationTimeoutMs = Number(process.env.PAGEPOCKET_NAV_TIMEOUT_MS || "60000");
+    const pendingTimeoutMs = Number(process.env.PAGEPOCKET_PENDING_TIMEOUT_MS || "40000");
     page.setDefaultNavigationTimeout(navigationTimeoutMs);
 
     // Accumulate network traffic so the replay script can serve responses offline.
@@ -66,7 +66,7 @@ export default class WebechoCommand extends Command {
         await page.waitForSelector("body", { timeout: 15000 });
         await page.waitForNetworkIdle({ idleTime: 2000, timeout: 30000 }).catch(() => undefined);
         await page
-          .waitForFunction(() => (window as any).__webechoPendingRequests === 0, {
+          .waitForFunction(() => (window as any).__pagepocketPendingRequests === 0, {
             timeout: pendingTimeoutMs
           })
           .catch(() => undefined);
@@ -78,7 +78,7 @@ export default class WebechoCommand extends Command {
         const $initial = cheerio.load(resolvedHtml);
         const resolvedTitle = $initial("title").first().text() || "snapshot";
         const resolvedFetchXhrRecords = await page.evaluate(() => {
-          return (window as any).__webechoRecords || [];
+          return (window as any).__pagepocketRecords || [];
         });
 
         return {

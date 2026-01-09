@@ -90,7 +90,7 @@ describe("resource helpers", () => {
       });
     };
 
-    const tempDir = await fs.mkdtemp(path.join(os.tmpdir(), "webecho-resource-"));
+    const tempDir = await fs.mkdtemp(path.join(os.tmpdir(), "pagepocket-resource-"));
     const { outputPath, filename, contentType, size } = await downloadResource(
       "https://example.com/assets/app.css",
       tempDir,

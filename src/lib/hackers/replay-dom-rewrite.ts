@@ -6,8 +6,8 @@ export const replayDomRewriter: ScriptHacker = {
   build: () => `
   // Placeholder data URLs for missing resources.
   const transparentGif = "data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///ywAAAAAAQABAAACAUwAOw==";
-  const emptyScript = "data:text/javascript,/*webecho-missing*/";
-  const emptyStyle = "data:text/css,/*webecho-missing*/";
+  const emptyScript = "data:text/javascript,/*pagepocket-missing*/";
+  const emptyStyle = "data:text/css,/*pagepocket-missing*/";
 
   let readyResolved = false;
   if (ready && typeof ready.then === "function") {

@@ -14,7 +14,7 @@ export const replayBeaconStub: ScriptHacker = {
       }
       return true;
     };
-    navigator.sendBeacon.__webechoOriginal = originalBeacon;
+    navigator.sendBeacon.__pagepocketOriginal = originalBeacon;
   }
 `
 };

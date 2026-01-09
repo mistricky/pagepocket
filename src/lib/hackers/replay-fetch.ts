@@ -5,8 +5,8 @@ export const replayFetchResponder: ScriptHacker = {
   stage: "replay",
   build: () => `
   // Patch fetch to serve from recorded network data.
-  const originalFetch = (typeof __webechoOriginalFetch === "function")
-    ? __webechoOriginalFetch
+  const originalFetch = (typeof __pagepocketOriginalFetch === "function")
+    ? __pagepocketOriginalFetch
     : window.fetch.bind(window);
   window.fetch = async (input, init = {}) => {
     if (ready && typeof ready.then === "function") {
@@ -21,6 +21,6 @@ export const replayFetchResponder: ScriptHacker = {
     }
     return new Response("", { status: 404, statusText: "Not Found" });
   };
-  window.fetch.__webechoOriginal = originalFetch;
+  window.fetch.__pagepocketOriginal = originalFetch;
 `
 };

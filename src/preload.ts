@@ -9,14 +9,14 @@ export const buildPreloadScript = () => {
 
   return `
 (function () {
-  if (window.__webechoPatched) {
+  if (window.__pagepocketPatched) {
     return;
   }
-  Object.defineProperty(window, "__webechoPatched", { value: true });
+  Object.defineProperty(window, "__pagepocketPatched", { value: true });
 
   const records = [];
-  window.__webechoRecords = records;
-  window.__webechoPendingRequests = 0;
+  window.__pagepocketRecords = records;
+  window.__pagepocketPendingRequests = 0;
 
   const toAbsoluteUrl = (input) => {
     try {
@@ -47,10 +47,10 @@ export const buildPreloadScript = () => {
   };
 
   const trackPendingStart = () => {
-    window.__webechoPendingRequests += 1;
+    window.__pagepocketPendingRequests += 1;
   };
   const trackPendingEnd = () => {
-    window.__webechoPendingRequests = Math.max(0, window.__webechoPendingRequests - 1);
+    window.__pagepocketPendingRequests = Math.max(0, window.__pagepocketPendingRequests - 1);
   };
 
 ${hackerScripts}
