@@ -177,7 +177,7 @@ export default class WebechoCommand extends Command {
     };
 
     // Inject the replay script into the snapshot HTML.
-    const replayScript = buildReplayScript(snapshotData, targetUrl);
+    const replayScript = buildReplayScript(path.basename(outputRequestsPath), targetUrl);
     const head = $("head");
     if (head.length) {
       head.prepend(replayScript);

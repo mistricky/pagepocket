@@ -1,10 +1,9 @@
-import type { SnapshotData } from "./types";
 import { replayHackers } from "./hackers";
 import type { HackerContext } from "./hackers/types";
 
-export const buildReplayScript = (snapshot: SnapshotData, baseUrl: string) => {
-  const payload = JSON.stringify(snapshot).replace(/<\/script>/gi, "<\\/script>");
+export const buildReplayScript = (requestsPath: string, baseUrl: string) => {
   const basePayload = JSON.stringify(baseUrl);
+  const requestsPayload = JSON.stringify(requestsPath);
   const context: HackerContext = { stage: "replay" };
   const hackerScripts = replayHackers
     .map((hacker) => `  // hacker:${hacker.id}\n${hacker.build(context)}`)
@@ -13,11 +12,34 @@ export const buildReplayScript = (snapshot: SnapshotData, baseUrl: string) => {
   return `
 <script>
 (function(){
-  // Deserialize the snapshot and prepare lookup tables for offline responses.
-  const snapshot = ${payload} || {};
-  const records = snapshot.fetchXhrRecords || [];
-  const networkRecords = snapshot.networkRecords || [];
+  // Load the snapshot metadata before patching runtime APIs.
   const baseUrl = ${basePayload};
+  const requestsUrl = ${requestsPayload};
+
+  const loadSnapshot = async () => {
+    try {
+      const response = await fetch(requestsUrl);
+      if (!response.ok) {
+        throw new Error("Failed to load snapshot metadata");
+      }
+      return await response.json();
+    } catch {
+      return {
+        url: baseUrl,
+        title: "",
+        capturedAt: "",
+        fetchXhrRecords: [],
+        networkRecords: [],
+        resources: []
+      };
+    }
+  };
+
+  const bootstrap = async () => {
+    // Deserialize the snapshot and prepare lookup tables for offline responses.
+    const snapshot = (await loadSnapshot()) || {};
+    const records = snapshot.fetchXhrRecords || [];
+    const networkRecords = snapshot.networkRecords || [];
 
   const normalizeUrl = (input) => {
     try { return new URL(input, baseUrl).toString(); } catch { return input; }
@@ -172,6 +194,9 @@ export const buildReplayScript = (snapshot: SnapshotData, baseUrl: string) => {
   };
 
 ${hackerScripts}
+  };
+
+  bootstrap();
 })();
 </script>
 `;
