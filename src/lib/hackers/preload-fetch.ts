@@ -1,6 +1,6 @@
-import type { HackerModule } from "./types";
+import type { ScriptHacker } from "./types";
 
-export const preloadFetchRecorder: HackerModule = {
+export const preloadFetchRecorder: ScriptHacker = {
   id: "preload-fetch-recorder",
   stage: "preload",
   build: () => `

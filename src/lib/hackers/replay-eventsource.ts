@@ -1,6 +1,6 @@
-import type { HackerModule } from "./types";
+import type { ScriptHacker } from "./types";
 
-export const replayEventSourceStub: HackerModule = {
+export const replayEventSourceStub: ScriptHacker = {
   id: "replay-eventsource-stub",
   stage: "replay",
   build: () => `

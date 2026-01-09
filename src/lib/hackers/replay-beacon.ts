@@ -1,6 +1,6 @@
-import type { HackerModule } from "./types";
+import type { ScriptHacker } from "./types";
 
-export const replayBeaconStub: HackerModule = {
+export const replayBeaconStub: ScriptHacker = {
   id: "replay-beacon-stub",
   stage: "replay",
   build: () => `

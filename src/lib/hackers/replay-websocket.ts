@@ -1,6 +1,6 @@
-import type { HackerModule } from "./types";
+import type { ScriptHacker } from "./types";
 
-export const replayWebSocketStub: HackerModule = {
+export const replayWebSocketStub: ScriptHacker = {
   id: "replay-websocket-stub",
   stage: "replay",
   build: () => `

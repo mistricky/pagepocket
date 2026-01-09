@@ -1,6 +1,6 @@
-import type { HackerModule } from "./types";
+import type { ScriptHacker } from "./types";
 
-export const replayDomRewriter: HackerModule = {
+export const replayDomRewriter: ScriptHacker = {
   id: "replay-dom-rewriter",
   stage: "replay",
   build: () => `

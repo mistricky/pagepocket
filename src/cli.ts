@@ -32,6 +32,8 @@ const main = async () => {
   });
 
   const page = await browser.newPage();
+  const navigationTimeoutMs = Number(process.env.WEBSNAP_NAV_TIMEOUT_MS || "60000");
+  page.setDefaultNavigationTimeout(navigationTimeoutMs);
 
   // Accumulate network traffic so the replay script can serve responses offline.
   const networkRecords: NetworkRecord[] = [];
@@ -44,7 +46,8 @@ const main = async () => {
   const snapshot = await (async () => {
     try {
       const response = await page.goto(targetUrl, {
-        waitUntil: "domcontentloaded"
+        waitUntil: "domcontentloaded",
+        timeout: navigationTimeoutMs
       });
 
       await page.waitForSelector("body", { timeout: 15000 });

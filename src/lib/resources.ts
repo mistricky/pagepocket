@@ -2,22 +2,21 @@ import fs from "node:fs/promises";
 import path from "node:path";
 import crypto from "node:crypto";
 import * as cheerio from "cheerio";
-import type { Element } from "domhandler";
 import { extensionFromContentType } from "./content-type";
 
 type ResourceUrlCandidate = {
   attr: string;
-  element: Element;
+  element: any;
 };
 
 export type ResourceReference = {
   attr: string;
-  element: Element;
+  element: any;
   url: string;
 };
 
 export type SrcsetReference = {
-  element: Element;
+  element: any;
   value: string;
 };
 

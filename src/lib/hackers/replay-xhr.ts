@@ -1,6 +1,6 @@
-import type { HackerModule } from "./types";
+import type { ScriptHacker } from "./types";
 
-export const replayXhrResponder: HackerModule = {
+export const replayXhrResponder: ScriptHacker = {
   id: "replay-xhr-responder",
   stage: "replay",
   build: () => `
