@@ -6,8 +6,8 @@ export const replayDomRewriter: ScriptHacker = {
   build: () => `
   // Placeholder data URLs for missing resources.
   const transparentGif = "data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///ywAAAAAAQABAAACAUwAOw==";
-  const emptyScript = "data:text/javascript,/*websnap-missing*/";
-  const emptyStyle = "data:text/css,/*websnap-missing*/";
+  const emptyScript = "data:text/javascript,/*webecho-missing*/";
+  const emptyStyle = "data:text/css,/*webecho-missing*/";
 
   // Rewrite srcset values so each candidate is local or data-backed.
   const rewriteSrcset = (value) => {

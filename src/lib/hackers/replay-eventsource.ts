@@ -18,7 +18,7 @@ export const replayEventSourceStub: ScriptHacker = {
       };
       return source;
     };
-    window.EventSource.__websnapOriginal = OriginalEventSource;
+    window.EventSource.__webechoOriginal = OriginalEventSource;
   }
 `
 };

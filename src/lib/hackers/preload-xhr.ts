@@ -9,8 +9,8 @@ export const preloadXhrRecorder: ScriptHacker = {
   const originalSend = XMLHttpRequest.prototype.send;
 
   XMLHttpRequest.prototype.open = function(method, url, ...rest) {
-    this.__websnapMethod = method;
-    this.__websnapUrl = toAbsoluteUrl(url);
+    this.__webechoMethod = method;
+    this.__webechoUrl = toAbsoluteUrl(url);
     return originalOpen.call(this, method, url, ...rest);
   };
 
@@ -36,8 +36,8 @@ export const preloadXhrRecorder: ScriptHacker = {
 
       records.push({
         kind: "xhr",
-        url: xhr.__websnapUrl || "",
-        method: xhr.__websnapMethod || "GET",
+        url: xhr.__webechoUrl || "",
+        method: xhr.__webechoMethod || "GET",
         requestBody,
         status: xhr.status,
         statusText: xhr.statusText,

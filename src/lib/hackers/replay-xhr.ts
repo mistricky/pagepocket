@@ -8,13 +8,13 @@ export const replayXhrResponder: ScriptHacker = {
   const originalOpen = XMLHttpRequest.prototype.open;
   const originalSend = XMLHttpRequest.prototype.send;
   XMLHttpRequest.prototype.open = function(method, url, ...rest) {
-    this.__websnapMethod = method;
-    this.__websnapUrl = url;
+    this.__webechoMethod = method;
+    this.__webechoUrl = url;
     return originalOpen.call(this, method, url, ...rest);
   };
   XMLHttpRequest.prototype.send = function(body) {
-    const method = this.__websnapMethod || "GET";
-    const url = this.__websnapUrl || "";
+    const method = this.__webechoMethod || "GET";
+    const url = this.__webechoUrl || "";
     const record = findRecord(method, url, body);
     if (record) {
       const xhr = this;
@@ -70,7 +70,7 @@ export const replayXhrResponder: ScriptHacker = {
     }, 0);
     return;
   };
-  XMLHttpRequest.prototype.open.__websnapOriginal = originalOpen;
-  XMLHttpRequest.prototype.send.__websnapOriginal = originalSend;
+  XMLHttpRequest.prototype.open.__webechoOriginal = originalOpen;
+  XMLHttpRequest.prototype.send.__webechoOriginal = originalSend;
 `
 };

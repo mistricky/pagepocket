@@ -16,6 +16,6 @@ export const replayFetchResponder: ScriptHacker = {
     }
     return new Response("", { status: 404, statusText: "Not Found" });
   };
-  window.fetch.__websnapOriginal = originalFetch;
+  window.fetch.__webechoOriginal = originalFetch;
 `
 };

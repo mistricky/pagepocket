@@ -11,7 +11,7 @@ import { applyResourceMapToDom, downloadResource, extractResourceUrls } from "./
 import type { NetworkRecord, SnapshotData } from "./lib/types";
 import { buildPreloadScript } from "./preload";
 
-export default class WebsnapCommand extends Command {
+export default class WebechoCommand extends Command {
   static description = "Save a snapshot of a web page.";
 
   static args = {
@@ -33,7 +33,7 @@ export default class WebsnapCommand extends Command {
   };
 
   async run() {
-    const { args, flags } = await this.parse(WebsnapCommand);
+    const { args, flags } = await this.parse(WebechoCommand);
     const targetUrl = args.url;
 
     if (flags["single-file"]) {
@@ -50,7 +50,7 @@ export default class WebsnapCommand extends Command {
     });
 
     const page = await browser.newPage();
-    const navigationTimeoutMs = Number(process.env.WEBSNAP_NAV_TIMEOUT_MS || "60000");
+    const navigationTimeoutMs = Number(process.env.WEBECHO_NAV_TIMEOUT_MS || "60000");
     page.setDefaultNavigationTimeout(navigationTimeoutMs);
 
     // Accumulate network traffic so the replay script can serve responses offline.
@@ -77,7 +77,7 @@ export default class WebsnapCommand extends Command {
         const $initial = cheerio.load(resolvedHtml);
         const resolvedTitle = $initial("title").first().text() || "snapshot";
         const resolvedFetchXhrRecords = await page.evaluate(() => {
-          return (window as any).__websnapRecords || [];
+          return (window as any).__webechoRecords || [];
         });
 
         return {

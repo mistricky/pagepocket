@@ -47,6 +47,6 @@ export const preloadFetchRecorder: ScriptHacker = {
   window.fetch = (input, init) => {
     return recordFetch(input, init);
   };
-  window.fetch.__websnapOriginal = originalFetch;
+  window.fetch.__webechoOriginal = originalFetch;
 `
 };

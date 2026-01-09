@@ -9,13 +9,13 @@ export const buildPreloadScript = () => {
 
   return `
 (function () {
-  if (window.__websnapPatched) {
+  if (window.__webechoPatched) {
     return;
   }
-  Object.defineProperty(window, "__websnapPatched", { value: true });
+  Object.defineProperty(window, "__webechoPatched", { value: true });
 
   const records = [];
-  window.__websnapRecords = records;
+  window.__webechoRecords = records;
 
   const toAbsoluteUrl = (input) => {
     try {

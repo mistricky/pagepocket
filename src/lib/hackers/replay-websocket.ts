@@ -19,7 +19,7 @@ export const replayWebSocketStub: ScriptHacker = {
       };
       return socket;
     };
-    window.WebSocket.__websnapOriginal = OriginalWebSocket;
+    window.WebSocket.__webechoOriginal = OriginalWebSocket;
   }
 `
 };
