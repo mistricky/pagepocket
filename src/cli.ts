@@ -66,10 +66,7 @@ const safeFilename = (input: string) => {
 };
 
 const buildReplayScript = (snapshot: SnapshotData, baseUrl: string) => {
-  const payload = JSON.stringify(snapshot).replace(
-    /<\/script>/gi,
-    "<\\/script>",
-  );
+  const payload = JSON.stringify(snapshot).replace(/<\/script>/gi, "<\\/script>");
   const basePayload = JSON.stringify(baseUrl);
   return `\n<script>\n(function(){\n  const snapshot = ${payload} || {};\n  const records = snapshot.fetchXhrRecords || [];\n  const networkRecords = snapshot.networkRecords || [];\n  const baseUrl = ${basePayload};\n  const normalizeUrl = (input) => {\n    try { return new URL(input, baseUrl).toString(); } catch { return input; }\n  };\n  const normalizeBody = (body) => {\n    if (body === undefined || body === null) return "";\n    if (typeof body === "string") return body;\n    try { return String(body); } catch { return ""; }\n  };\n  const makeKey = (method, url, body) => method.toUpperCase() + " " + normalizeUrl(url) + " " + normalizeBody(body);\n  const byKey = new Map();\n  for (const record of records) {\n    if (!record || !record.url || !record.method) continue;\n    const key = makeKey(record.method, record.url, record.requestBody || "");\n    if (!byKey.has(key)) byKey.set(key, record);\n  }\n  for (const record of networkRecords) {\n    if (!record || !record.url || !record.method) continue;\n    const key = makeKey(record.method, record.url, record.requestBody || "");\n    if (!byKey.has(key)) byKey.set(key, record);\n  }\n  const localResourceSet = new Set();\n  const resourceUrlMap = new Map();\n  const resourceList = snapshot.resources || [];\n  for (const item of resourceList) {\n    if (!item || !item.localPath) continue;\n    localResourceSet.add(item.localPath);\n    localResourceSet.add("./" + item.localPath);\n    if (item.url) {\n      resourceUrlMap.set(normalizeUrl(item.url), item.localPath);\n    }\n  }\n  const isLocalResource = (value) => {\n    if (!value) return false;\n    if (value.startsWith("data:") || value.startsWith("blob:")) return true;\n    return localResourceSet.has(value);\n  };\n  const findRecord = (method, url, body) => {\n    const key = makeKey(method, url, body);\n    if (byKey.has(key)) return byKey.get(key);\n    const fallbackKey = makeKey(method, url, "");\n    if (byKey.has(fallbackKey)) return byKey.get(fallbackKey);\n    const getKey = makeKey("GET", url, "");\n    return byKey.get(getKey);\n  };\n  const findByUrl = (url) => {\n    if (isLocalResource(url)) return null;\n    const normalized = normalizeUrl(url);\n    const direct = byKey.get(makeKey("GET", normalized, ""));\n    if (direct) return direct;\n    return byKey.get(makeKey("GET", url, ""));\n  };\n  const findLocalPath = (url) => {\n    if (!url) return null;\n    const normalized = normalizeUrl(url);\n    return resourceUrlMap.get(normalized) || null;\n  };\n  const defineProp = (obj, key, value) => {\n    try {\n      Object.defineProperty(obj, key, { value, configurable: true });\n    } catch {}\n  };\n  const decodeBase64 = (input) => {\n    try {\n      const binary = atob(input || "");\n      const bytes = new Uint8Array(binary.length);\n      for (let i = 0; i < binary.length; i++) {\n        bytes[i] = binary.charCodeAt(i);\n      }\n      return bytes;\n    } catch {\n      return new Uint8Array();\n    }\n  };\n  const bytesToBase64 = (bytes) => {\n    let binary = "";\n    for (let i = 0; i < bytes.length; i++) {\n      binary += String.fromCharCode(bytes[i]);\n    }\n    return btoa(binary);\n  };\n  const textToBase64 = (text) => {\n    try {\n      const bytes = new TextEncoder().encode(text || "");\n      return bytesToBase64(bytes);\n    } catch {\n      return btoa(text || "");\n    }\n  };\n  const getContentType = (record) => {\n    const headers = record.responseHeaders || {};\n    for (const key in headers) {\n      if (key.toLowerCase() === "content-type") {\n        return headers[key] || "application/octet-stream";\n      }\n    }\n    return "application/octet-stream";\n  };\n  const toDataUrl = (record, fallbackType) => {\n    if (!record) return "";\n    const contentType = getContentType(record) || fallbackType || "application/octet-stream";\n    if (record.responseEncoding === "base64" && record.responseBodyBase64) {\n      return "data:" + contentType + ";base64," + record.responseBodyBase64;\n    }\n    if (record.responseBody) {\n      return "data:" + contentType + ";base64," + textToBase64(record.responseBody);\n    }\n    return "data:" + (fallbackType || "application/octet-stream") + ",";\n  };\n  const responseFromRecord = (record) => {\n    const headers = new Headers(record.responseHeaders || {});\n    if (record.responseEncoding === "base64" && record.responseBodyBase64) {\n      const bytes = decodeBase64(record.responseBodyBase64);\n      return new Response(bytes, {\n        status: record.status || 200,\n        statusText: record.statusText || "OK",\n        headers\n      });\n    }\n    const bodyText = record.responseBody || "";\n    return new Response(bodyText, {\n      status: record.status || 200,\n      statusText: record.statusText || "OK",\n      headers\n    });\n  };\n  const originalFetch = window.fetch.bind(window);\n  window.fetch = async (input, init = {}) => {\n    const url = typeof input === "string" ? input : input.url;\n    const method = (init && init.method) || (typeof input === "string" ? "GET" : input.method || "GET");\n    const body = init && init.body;\n    const record = findRecord(method, url, body);\n    if (record) {\n      return responseFromRecord(record);\n    }\n    return new Response("", { status: 404, statusText: "Not Found" });\n  };\n  const originalOpen = XMLHttpRequest.prototype.open;\n  const originalSend = XMLHttpRequest.prototype.send;\n  XMLHttpRequest.prototype.open = function(method, url, ...rest) {\n    this.__websnapMethod = method;\n    this.__websnapUrl = url;\n    return originalOpen.call(this, method, url, ...rest);\n  };\n  XMLHttpRequest.prototype.send = function(body) {\n    const method = this.__websnapMethod || "GET";\n    const url = this.__websnapUrl || "";\n    const record = findRecord(method, url, body);\n    if (record) {\n      const xhr = this;\n      const responseText = record.responseBody || "";\n      const status = record.status || 200;\n      const statusText = record.statusText || "OK";\n      setTimeout(() => {\n        defineProp(xhr, "readyState", 4);\n        defineProp(xhr, "status", status);\n        defineProp(xhr, "statusText", statusText);\n        if (xhr.responseType === "arraybuffer" && record.responseBodyBase64) {\n          const bytes = decodeBase64(record.responseBodyBase64);\n          defineProp(xhr, "response", bytes.buffer);\n          defineProp(xhr, "responseText", "");\n        } else if (xhr.responseType === "blob" && record.responseBodyBase64) {\n          const bytes = decodeBase64(record.responseBodyBase64);\n          defineProp(xhr, "response", new Blob([bytes]));\n          defineProp(xhr, "responseText", "");\n        } else {\n          defineProp(xhr, "response", responseText);\n          defineProp(xhr, "responseText", responseText);\n        }\n        if (typeof xhr.onreadystatechange === "function") xhr.onreadystatechange();\n        if (typeof xhr.onload === "function") xhr.onload(new Event("load"));\n        if (typeof xhr.onloadend === "function") xhr.onloadend(new Event("loadend"));\n        if (xhr.dispatchEvent) {\n          xhr.dispatchEvent(new Event("readystatechange"));\n          xhr.dispatchEvent(new Event("load"));\n          xhr.dispatchEvent(new Event("loadend"));\n        }\n      }, 0);\n      return;\n    }\n    const xhr = this;\n    const status = 404;\n    const statusText = "Not Found";\n    setTimeout(() => {\n      defineProp(xhr, "readyState", 4);\n      defineProp(xhr, "status", status);\n      defineProp(xhr, "statusText", statusText);\n      defineProp(xhr, "response", "");\n      defineProp(xhr, "responseText", "");\n      if (typeof xhr.onreadystatechange === "function") xhr.onreadystatechange();\n      if (typeof xhr.onload === "function") xhr.onload(new Event("load"));\n      if (typeof xhr.onloadend === "function") xhr.onloadend(new Event("loadend"));\n      if (xhr.dispatchEvent) {\n        xhr.dispatchEvent(new Event("readystatechange"));\n        xhr.dispatchEvent(new Event("load"));\n        xhr.dispatchEvent(new Event("loadend"));\n      }\n    }, 0);\n    return;\n  };\n  const transparentGif = "data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///ywAAAAAAQABAAACAUwAOw==";\n  const emptyScript = "data:text/javascript,/*websnap-missing*/";\n  const emptyStyle = "data:text/css,/*websnap-missing*/";\n  const rewriteSrcset = (value) => {\n    if (!value) return value;\n    return value.split(",").map((part) => {\n      const trimmed = part.trim();\n      if (!trimmed) return trimmed;\n      const pieces = trimmed.split(/\s+/, 2);\n      const url = pieces[0];\n      const descriptor = pieces[1];\n      if (isLocalResource(url)) return trimmed;\n      const localPath = findLocalPath(url);\n      if (localPath) {\n        return descriptor ? localPath + " " + descriptor : localPath;\n      }\n      const record = findByUrl(url);\n      const replacement = record ? toDataUrl(record) : transparentGif;\n      return descriptor ? replacement + " " + descriptor : replacement;\n    }).join(", ");\n  };\n  const rewriteElement = (element) => {\n    if (!element || !element.getAttribute) return;\n    const tag = (element.tagName || "").toLowerCase();\n    if (tag === "img" || tag === "source" || tag === "video" || tag === "audio" || tag === "script" || tag === "iframe") {\n      const src = element.getAttribute("src");\n      if (src && !isLocalResource(src) && !src.startsWith("data:") && !src.startsWith("blob:")) {\n        const localPath = findLocalPath(src);\n        if (localPath) {\n          element.setAttribute("src", localPath);\n          return;\n        }\n        const record = findByUrl(src);\n        const fallback = tag === "script" ? emptyScript : transparentGif;\n        element.setAttribute("src", record ? toDataUrl(record) : fallback);\n      }
     }
@@ -296,7 +293,7 @@ const extractResourceUrls = (html: string, baseUrl: string) => {
     return {
       attr,
       element,
-      url: toAbsoluteUrl(baseUrl, value),
+      url: toAbsoluteUrl(baseUrl, value)
     };
   });
 
@@ -359,10 +356,7 @@ const buildDataUrlMap = (records: NetworkRecord[]) => {
       }
     }
     contentType = contentType || "application/octet-stream";
-    map.set(
-      record.url,
-      `data:${contentType};base64,${record.responseBodyBase64}`,
-    );
+    map.set(record.url, `data:${contentType};base64,${record.responseBodyBase64}`);
   }
   return map;
 };
@@ -370,17 +364,13 @@ const buildDataUrlMap = (records: NetworkRecord[]) => {
 const rewriteCssUrls = async (
   filePath: string,
   cssUrl: string,
-  dataUrlMap: Map<string, string>,
+  dataUrlMap: Map<string, string>
 ) => {
   const css = await fs.readFile(filePath, "utf-8");
   const urlPattern = /url\(\s*(['"]?)([^'")]+)\1\s*\)/g;
   const rewritten = css.replace(urlPattern, (match, quote, rawUrl) => {
     const trimmed = String(rawUrl || "").trim();
-    if (
-      !trimmed ||
-      trimmed.startsWith("data:") ||
-      trimmed.startsWith("blob:")
-    ) {
+    if (!trimmed || trimmed.startsWith("data:") || trimmed.startsWith("blob:")) {
       return match;
     }
     let absolute = trimmed;
@@ -412,7 +402,7 @@ const main = async () => {
   const preloadScript = await fs.readFile(preloadPath, "utf-8");
 
   const browser = await puppeteer.launch({
-    headless: true,
+    headless: true
   });
 
   const page = await browser.newPage();
@@ -461,7 +451,7 @@ const main = async () => {
       responseBodyBase64,
       responseEncoding,
       error,
-      timestamp: Date.now(),
+      timestamp: Date.now()
     });
   });
 
@@ -473,12 +463,10 @@ const main = async () => {
 
   try {
     const response = await page.goto(targetUrl, {
-      waitUntil: "domcontentloaded",
+      waitUntil: "domcontentloaded"
     });
     await page.waitForSelector("body", { timeout: 15000 });
-    await page
-      .waitForNetworkIdle({ idleTime: 2000, timeout: 30000 })
-      .catch(() => undefined);
+    await page.waitForNetworkIdle({ idleTime: 2000, timeout: 30000 }).catch(() => undefined);
     await new Promise((resolve) => setTimeout(resolve, 2000));
 
     if (response) {
@@ -514,12 +502,8 @@ const main = async () => {
       continue;
     }
     try {
-      const { filename, contentType, size, outputPath } =
-        await downloadResource(url, resourcesDir);
-      if (
-        (contentType && contentType.includes("text/css")) ||
-        outputPath.endsWith(".css")
-      ) {
+      const { filename, contentType, size, outputPath } = await downloadResource(url, resourcesDir);
+      if ((contentType && contentType.includes("text/css")) || outputPath.endsWith(".css")) {
         await rewriteCssUrls(outputPath, url, dataUrlMap);
       }
       resourceMap.set(url, filename);
@@ -527,7 +511,7 @@ const main = async () => {
         url,
         localPath: path.join(`${safeTitle}_files`, filename),
         contentType,
-        size,
+        size
       });
     } catch {
       continue;
@@ -539,10 +523,7 @@ const main = async () => {
     if (!local) {
       continue;
     }
-    $(resource.element).attr(
-      resource.attr,
-      path.join(`${safeTitle}_files`, local),
-    );
+    $(resource.element).attr(resource.attr, path.join(`${safeTitle}_files`, local));
   }
 
   for (const item of srcsetItems) {
@@ -568,7 +549,7 @@ const main = async () => {
     capturedAt: new Date().toISOString(),
     fetchXhrRecords,
     networkRecords,
-    resources: resourceMeta,
+    resources: resourceMeta
   };
 
   const replayScript = buildReplayScript(snapshotData, targetUrl);
@@ -579,11 +560,7 @@ const main = async () => {
     $.root().prepend(replayScript);
   }
 
-  await fs.writeFile(
-    outputRequestsPath,
-    JSON.stringify(snapshotData, null, 2),
-    "utf-8",
-  );
+  await fs.writeFile(outputRequestsPath, JSON.stringify(snapshotData, null, 2), "utf-8");
   await fs.writeFile(outputHtmlPath, $.html(), "utf-8");
 
   console.log(`Saved ${outputHtmlPath}`);

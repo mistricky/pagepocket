@@ -1,0 +1,8 @@
+\.npm-cache
+node_modules
+dist
+*.requests.json
+*_files
+Moon_Bartosz_Ciechanowski.html
+Moon_Bartosz_Ciechanowski.requests.json
+Moon_Bartosz_Ciechanowski_files

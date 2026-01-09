@@ -38,7 +38,9 @@
   const recordFetch = async (input: RequestInfo, init?: RequestInit) => {
     const url = typeof input === "string" ? toAbsoluteUrl(input) : toAbsoluteUrl(input.url);
     const method = init?.method || (typeof input === "string" ? "GET" : input.method || "GET");
-    const requestBody = normalizeBody(init?.body || (typeof input === "string" ? undefined : input.body));
+    const requestBody = normalizeBody(
+      init?.body || (typeof input === "string" ? undefined : input.body)
+    );
 
     try {
       const response = await originalFetch(input, init);

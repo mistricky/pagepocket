@@ -5,6 +5,8 @@
   "main": "index.js",
   "scripts": {
     "build": "tsc",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
     "start": "node dist/cli.js",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
@@ -21,6 +23,7 @@
   },
   "devDependencies": {
     "@types/node": "^20.11.30",
+    "prettier": "^3.7.4",
     "typescript": "^5.4.5"
   },
   "pnpm": {
