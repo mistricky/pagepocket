@@ -13,6 +13,9 @@
   "bin": {
     "websnap": "dist/index.js"
   },
+  "files": [
+    "dist"
+  ],
   "keywords": [],
   "author": "",
   "license": "ISC",
