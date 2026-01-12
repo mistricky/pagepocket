@@ -26,12 +26,17 @@ export default class PagepocketCommand extends Command {
   static flags = {
     help: Flags.help({
       char: "h"
+    }),
+    output: Flags.string({
+      char: "o",
+      description: "Output path for the snapshot HTML file"
     })
   };
 
   async run() {
-    const { args } = await this.parse(PagepocketCommand);
+    const { args, flags } = await this.parse(PagepocketCommand);
     const targetUrl = args.url;
+    const outputFlag = flags.output ? flags.output.trim() : undefined;
 
     // Build the preload script so it can record fetch/XHR data in the page context.
     const preloadScript = buildPreloadScript();
@@ -64,7 +69,7 @@ export default class PagepocketCommand extends Command {
         });
 
         await page.waitForSelector("body", { timeout: 15000 });
-        await page.waitForNetworkIdle({ idleTime: 2000, timeout: 30000 }).catch(() => undefined);
+        await page.waitForNetworkIdle({ idleTime: 5000, timeout: 30000 }).catch(() => undefined);
         await page
           .waitForFunction(() => (window as any).__pagepocketPendingRequests === 0, {
             timeout: pendingTimeoutMs
@@ -99,10 +104,11 @@ export default class PagepocketCommand extends Command {
 
     // Prepare output paths and asset folder names.
     const safeTitle = safeFilename(title || "snapshot");
-    const outputHtmlPath = path.resolve(`${safeTitle}.html`);
-    const outputRequestsPath = path.resolve(`${safeTitle}.requests.json`);
+    const baseDir = outputFlag ? path.resolve(outputFlag) : process.cwd();
+    const outputHtmlPath = path.join(baseDir, `${safeTitle}.html`);
+    const outputRequestsPath = path.join(baseDir, `${safeTitle}.requests.json`);
     const assetsDirName = `${safeTitle}_files`;
-    const resourcesDir = path.resolve(assetsDirName);
+    const resourcesDir = path.join(baseDir, assetsDirName);
     await fs.mkdir(resourcesDir, { recursive: true });
 
     // Map existing network responses to data URLs for CSS rewriting.

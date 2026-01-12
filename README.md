@@ -40,11 +40,14 @@ npm i -g pagepocket
 
 ```bash
 pp https://example.com
+pp https://example.com -o ./snapshots
 ```
 
 ## Output
 
-Snapshots are written to the current directory:
+Snapshots are written to the current directory by default.
+
+Use `--output` to choose a different directory; filenames still derive from the page title:
 
 - `*.html`: offline snapshot page
 - `*.requests.json`: recorded requests/responses
@@ -55,6 +58,9 @@ Example output paths:
 - `example.html`
 - `example.requests.json`
 - `example_files/`
+- `snapshots/example.html`
+- `snapshots/example.requests.json`
+- `snapshots/example_files/`
 
 ## Configuration
 
