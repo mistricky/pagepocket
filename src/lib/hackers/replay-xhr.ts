@@ -23,7 +23,12 @@ export const replayXhrResponder: ScriptHacker = {
     const url = this.__pagepocketUrl || "";
     const xhr = this;
     waitForReady().then(() => {
-      const record = findRecord(method, url, body);
+      let record = null;
+      try {
+        record = findRecord(method, url, body);
+      } catch (err) {
+        console.warn("pagepocket xhr replay fallback", { url, method, err });
+      }
       if (record) {
         const responseText = record.responseBody || "";
         const status = record.status || 200;
@@ -80,5 +85,6 @@ export const replayXhrResponder: ScriptHacker = {
   };
   XMLHttpRequest.prototype.open.__pagepocketOriginal = originalOpen;
   XMLHttpRequest.prototype.send.__pagepocketOriginal = originalSend;
+  ensureReplayPatches && ensureReplayPatches();
 `
 };

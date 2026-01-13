@@ -76,6 +76,45 @@ export default class PagepocketCommand extends Command {
           })
           .catch(() => undefined);
         await new Promise((resolve) => setTimeout(resolve, 2000));
+
+        const hoverSpinner = ora("Hovering elements to trigger hover requests").start();
+        try {
+          await page.evaluate(() => {
+            const events = ["mouseover", "mouseenter", "mousemove"];
+            const elements = Array.from(document.querySelectorAll("*"));
+            for (const el of elements) {
+              try {
+                const rect = el.getBoundingClientRect();
+                const hasSize = rect && rect.width >= 1 && rect.height >= 1;
+                const clientX = hasSize ? rect.left + rect.width / 2 : 0;
+                const clientY = hasSize ? rect.top + rect.height / 2 : 0;
+                for (const type of events) {
+                  const evt = new MouseEvent(type, {
+                    bubbles: true,
+                    cancelable: true,
+                    view: window,
+                    clientX,
+                    clientY
+                  });
+                  el.dispatchEvent(evt);
+                }
+              } catch {}
+            }
+          });
+          hoverSpinner.succeed("Hovered elements to trigger hover requests");
+        } catch (hoverError) {
+          hoverSpinner.fail("Failed to hover elements");
+          throw hoverError;
+        }
+
+        await page.waitForNetworkIdle({ idleTime: 5000, timeout: 30000 }).catch(() => undefined);
+        await page
+          .waitForFunction(() => (window as any).__pagepocketPendingRequests === 0, {
+            timeout: pendingTimeoutMs
+          })
+          .catch(() => undefined);
+        await new Promise((resolve) => setTimeout(resolve, 2000));
+
         visitSpinner.succeed("Visited the target site");
 
         const responseHtml = response ? await response.text() : "";
