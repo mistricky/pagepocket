@@ -13,6 +13,54 @@ import { applyResourceMapToDom, downloadResource, extractResourceUrls } from "./
 import type { NetworkRecord, SnapshotData } from "./lib/types";
 import { buildPreloadScript } from "./preload";
 
+const getHeaderValue = (headers: Record<string, string>, name: string) => {
+  for (const key in headers) {
+    if (key.toLowerCase() === name.toLowerCase()) {
+      return headers[key];
+    }
+  }
+  return undefined;
+};
+
+const toDataUrlFromRecord = (record: NetworkRecord) => {
+  if (!record) return null;
+  const headers = record.responseHeaders || {};
+  const contentType = getHeaderValue(headers, "content-type") || "application/octet-stream";
+
+  if (record.responseEncoding === "base64" && record.responseBodyBase64) {
+    return `data:${contentType};base64,${record.responseBodyBase64}`;
+  }
+
+  if (record.responseBody) {
+    return `data:${contentType};base64,${Buffer.from(record.responseBody, "utf-8").toString("base64")}`;
+  }
+
+  return null;
+};
+
+const findFaviconDataUrl = (records: NetworkRecord[]) => {
+  for (const record of records) {
+    if (!record || !record.url) continue;
+    const headers = record.responseHeaders || {};
+    const contentType = (getHeaderValue(headers, "content-type") || "").toLowerCase();
+    const pathname = (() => {
+      try {
+        return new URL(record.url).pathname;
+      } catch {
+        return record.url;
+      }
+    })();
+
+    const looksLikeFavicon =
+      contentType.includes("icon") || /favicon(\.[a-z0-9]+)?$/i.test(pathname || "");
+    if (!looksLikeFavicon) continue;
+
+    const dataUrl = toDataUrlFromRecord(record);
+    if (dataUrl) return dataUrl;
+  }
+  return null;
+};
+
 export default class PagepocketCommand extends Command {
   static description = "Save a snapshot of a web page.";
 
@@ -141,6 +189,8 @@ export default class PagepocketCommand extends Command {
 
     const { title, html, fetchXhrRecords } = snapshot;
 
+    const faviconDataUrl = findFaviconDataUrl(networkRecords);
+
     // Prepare output paths and asset folder names.
     const safeTitle = safeFilename(title || "snapshot");
     const baseDir = outputFlag ? path.resolve(outputFlag) : process.cwd();
@@ -225,6 +275,16 @@ export default class PagepocketCommand extends Command {
       head.prepend(replayScript);
     } else {
       $.root().prepend(replayScript);
+    }
+
+    if (faviconDataUrl) {
+      const existingIcon = $('link[rel="icon"]');
+      if (existingIcon.length) {
+        existingIcon.attr("href", faviconDataUrl);
+      } else {
+        const link = '<link rel="icon" href="' + faviconDataUrl + '" />';
+        head.length ? head.append(link) : $.root().append(link);
+      }
     }
 
     // Persist the snapshot HTML and JSON metadata to disk.

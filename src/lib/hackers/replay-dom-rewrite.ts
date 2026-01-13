@@ -74,6 +74,7 @@ export const replayDomRewriter: ScriptHacker = {
 
     if (tag === "link") {
       const href = element.getAttribute("href");
+      const rel = (element.getAttribute("rel") || "").toLowerCase();
       if (href && !isLocalResource(href) && !href.startsWith("data:") && !href.startsWith("blob:")) {
         const localPath = findLocalPath(href);
         if (localPath) {
@@ -81,7 +82,6 @@ export const replayDomRewriter: ScriptHacker = {
           return;
         }
         const record = findByUrl(href);
-        const rel = (element.getAttribute("rel") || "").toLowerCase();
         const fallback = rel === "stylesheet" ? emptyStyle : emptyStyle;
         element.setAttribute("href", record ? toDataUrl(record, "text/css") : fallback);
       }
@@ -108,6 +108,10 @@ export const replayDomRewriter: ScriptHacker = {
         return originalSetAttribute.call(this, name, rewritten);
       }
 
+      const tag = (this.tagName || "").toLowerCase();
+      const rel = (this.getAttribute && this.getAttribute("rel")) || "";
+      const relLower = rel.toLowerCase();
+
       if (isLocalResource(String(value))) {
         return originalSetAttribute.call(this, name, value);
       }
@@ -117,17 +121,16 @@ export const replayDomRewriter: ScriptHacker = {
       }
       const record = findByUrl(String(value));
       if (record) {
-        const dataUrl = toDataUrl(record);
+        const fallbackType = attr === "href" && relLower.includes("stylesheet") ? "text/css" : undefined;
+        const dataUrl = toDataUrl(record, fallbackType);
         return originalSetAttribute.call(this, name, dataUrl);
       }
-      const tag = (this.tagName || "").toLowerCase();
       if (attr === "src") {
         const fallback = tag === "script" ? emptyScript : transparentGif;
         return originalSetAttribute.call(this, name, fallback);
       }
       if (attr === "href") {
-        const rel = (this.getAttribute && this.getAttribute("rel")) || "";
-        const fallback = rel.toLowerCase() === "stylesheet" ? emptyStyle : emptyStyle;
+        const fallback = relLower === "stylesheet" ? emptyStyle : emptyStyle;
         return originalSetAttribute.call(this, name, fallback);
       }
     }
@@ -217,6 +220,8 @@ export const replayDomRewriter: ScriptHacker = {
 
   patchProperty(HTMLLinkElement.prototype, "href", function(value, setter) {
     const rawValue = String(value);
+    const rel = (this.getAttribute && this.getAttribute("rel")) || "";
+    const relLower = rel.toLowerCase();
     if (!readyResolved) {
       onReady(() => {
         if (isLocalResource(rawValue)) {
@@ -229,7 +234,7 @@ export const replayDomRewriter: ScriptHacker = {
           return;
         }
         const record = findByUrl(rawValue);
-        const next = record ? toDataUrl(record, "text/css") : emptyStyle;
+        const next = record ? toDataUrl(record, relLower.includes("stylesheet") ? "text/css" : undefined) : emptyStyle;
         setter.call(this, next);
       });
       return;
@@ -244,7 +249,7 @@ export const replayDomRewriter: ScriptHacker = {
       return;
     }
     const record = findByUrl(rawValue);
-    const next = record ? toDataUrl(record, "text/css") : emptyStyle;
+    const next = record ? toDataUrl(record, relLower.includes("stylesheet") ? "text/css" : undefined) : emptyStyle;
     setter.call(this, next);
   });
 
