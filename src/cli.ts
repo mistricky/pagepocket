@@ -125,7 +125,7 @@ export default class PagepocketCommand extends Command {
           .catch(() => undefined);
         await new Promise((resolve) => setTimeout(resolve, 2000));
 
-        const hoverSpinner = ora("Hovering elements to trigger hover requests").start();
+        const hoverSpinner = ora("Trigger requests").start();
         try {
           await page.evaluate(() => {
             const events = ["mouseover", "mouseenter", "mousemove"];
