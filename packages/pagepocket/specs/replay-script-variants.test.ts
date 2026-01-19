@@ -1,5 +1,6 @@
 import assert from "node:assert";
 import { describe, test } from "node:test";
+
 import { buildReplayScript } from "../src/lib/replay-script";
 
 const baseUrl = "https://transformer-circuits.pub/2025/attribution-graphs/biology.html";

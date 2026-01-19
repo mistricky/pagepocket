@@ -6,23 +6,11 @@ settings:
 
 importers:
 
-  .: {}
-
-  packages/lighterceptor:
-    dependencies:
-      jsdom:
-        specifier: ^26.0.0
-        version: 26.1.0
+  .:
     devDependencies:
       '@eslint/js':
         specifier: ^9.39.2
         version: 9.39.2
-      '@types/jsdom':
-        specifier: ^27.0.0
-        version: 27.0.0
-      '@types/node':
-        specifier: ^20.17.12
-        version: 20.19.27
       '@typescript-eslint/eslint-plugin':
         specifier: ^8.53.0
         version: 8.53.0(@typescript-eslint/parser@8.53.0(eslint@9.39.2)(typescript@5.9.3))(eslint@9.39.2)(typescript@5.9.3)
@@ -53,6 +41,19 @@ importers:
       prettier:
         specifier: ^3.8.0
         version: 3.8.0
+
+  packages/lighterceptor:
+    dependencies:
+      jsdom:
+        specifier: ^26.0.0
+        version: 26.1.0
+    devDependencies:
+      '@types/jsdom':
+        specifier: ^27.0.0
+        version: 27.0.0
+      '@types/node':
+        specifier: ^20.17.12
+        version: 20.19.27
       tsx:
         specifier: ^4.21.0
         version: 4.21.0

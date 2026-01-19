@@ -1,5 +1,24 @@
 {
   "name": "pagepocket-workspace",
   "private": true,
-  "packageManager": "pnpm@10.25.0"
+  "packageManager": "pnpm@10.25.0",
+  "scripts": {
+    "build": "pnpm -r build",
+    "lint": "eslint \"packages/**/*.ts\"",
+    "lint:fix": "eslint \"packages/**/*.ts\" --fix",
+    "test": "pnpm -r test"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.39.2",
+    "@typescript-eslint/eslint-plugin": "^8.53.0",
+    "@typescript-eslint/parser": "^8.53.0",
+    "eslint": "^9.39.2",
+    "eslint-config-prettier": "^10.1.8",
+    "eslint-plugin-import": "^2.32.0",
+    "eslint-plugin-prettier": "^5.5.5",
+    "eslint-plugin-unused-imports": "^4.3.0",
+    "eslint-plugin-vitest": "^0.5.4",
+    "globals": "^17.0.0",
+    "prettier": "^3.8.0"
+  }
 }

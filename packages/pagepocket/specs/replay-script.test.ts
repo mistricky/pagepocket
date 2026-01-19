@@ -1,8 +1,8 @@
 import assert from "node:assert/strict";
-import assert from "node:assert";
-import { describe, test } from "node:test";
-import { buildReplayScript } from "../src/lib/replay-script";
 import path from "node:path";
+import { describe, test } from "node:test";
+
+import { buildReplayScript } from "../src/lib/replay-script";
 
 describe("buildReplayScript", () => {
   test("includes requests json path and replay hackers", () => {

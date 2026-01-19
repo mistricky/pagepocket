@@ -1,4 +1,5 @@
 import fs from "node:fs/promises";
+
 import type { NetworkRecord } from "./types";
 
 const getHeaderValue = (headers: Record<string, string>, name: string) => {

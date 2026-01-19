@@ -1,10 +1,12 @@
 import fs from "node:fs/promises";
 import path from "node:path";
-import * as cheerio from "cheerio";
+
 import { Args, Command, Flags } from "@oclif/core";
 import chalk from "chalk";
-import ora from "ora";
+import * as cheerio from "cheerio";
 import { Lighterceptor } from "lighterceptor";
+import ora from "ora";
+
 import { buildDataUrlMap, rewriteCssUrls } from "./lib/css-rewrite";
 import { safeFilename } from "./lib/filename";
 import { buildReplayScript } from "./lib/replay-script";
@@ -115,7 +117,7 @@ export default class PagepocketCommand extends Command {
       networkRecords = mapLighterceptorRecords(lighterceptorNetworkRecords);
       capturedTitle = result.title;
       networkSpinner.succeed(`Captured ${networkRecords.length} network responses`);
-    } catch (error) {
+    } catch {
       networkSpinner.fail("Failed to capture network requests");
     }
 

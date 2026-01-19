@@ -1,8 +1,9 @@
 import assert from "node:assert/strict";
-import { describe, test } from "node:test";
 import fs from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
+import { describe, test } from "node:test";
+
 import { buildDataUrlMap, rewriteCssUrls } from "../src/lib/css-rewrite";
 import type { NetworkRecord } from "../src/lib/types";
 
