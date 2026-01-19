@@ -3,6 +3,17 @@ import { describe, expect, it, vi } from "vitest";
 import { Lighterceptor } from "../src/index";
 
 describe("Lighterceptor run", () => {
+  const runWithConsoleSpy = async (html: string) => {
+    const spy = vi.spyOn(console, "error").mockImplementation(() => {});
+    try {
+      const lighterceptor = new Lighterceptor(html, { requestOnly: true });
+      await lighterceptor.run();
+    } finally {
+      spy.mockRestore();
+    }
+    return spy;
+  };
+
   it("writes requests for html input", async () => {
     const lighterceptor = new Lighterceptor(`<img src="https://example.com/a.png">`, {
       requestOnly: true
@@ -188,5 +199,46 @@ foo.src = "https://example.com/external-image.png";
     } finally {
       vi.unstubAllGlobals();
     }
+  });
+
+  it("does not error when scripts call fetch().json()", async () => {
+    const spy = await runWithConsoleSpy(`<!doctype html>
+<script>
+fetch("https://example.com/api")
+  .then((res) => res.json())
+  .then(() => {});
+</script>`);
+    expect(spy.mock.calls.length).toBe(0);
+  });
+
+  it("does not error when scripts call fetch().text()", async () => {
+    const spy = await runWithConsoleSpy(`<!doctype html>
+<script>
+fetch("https://example.com/api")
+  .then((res) => res.text())
+  .then(() => {});
+</script>`);
+    expect(spy.mock.calls.length).toBe(0);
+  });
+
+  it("does not error when scripts call fetch().arrayBuffer()", async () => {
+    const spy = await runWithConsoleSpy(`<!doctype html>
+<script>
+fetch("https://example.com/api")
+  .then((res) => res.arrayBuffer())
+  .then(() => {});
+</script>`);
+    expect(spy.mock.calls.length).toBe(0);
+  });
+
+  it("does not error when scripts call fetch().clone()", async () => {
+    const spy = await runWithConsoleSpy(`<!doctype html>
+<script>
+fetch("https://example.com/api").then((res) => {
+  const cloned = res.clone();
+  return cloned.text();
+});
+</script>`);
+    expect(spy.mock.calls.length).toBe(0);
   });
 });

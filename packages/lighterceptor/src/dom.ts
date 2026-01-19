@@ -1,4 +1,12 @@
-import { JSDOM, type DOMWindow } from "jsdom";
+import { JSDOM, VirtualConsole, type DOMWindow } from "jsdom";
+import {
+  configMocks,
+  mockAnimationsApi,
+  mockCSSTypedOM,
+  mockIntersectionObserver,
+  mockResizeObserver,
+  mockViewport
+} from "jsdom-testing-mocks";
 
 import { InterceptingResourceLoader } from "./resource-loader.js";
 import type { RequestInterceptor } from "./types.js";
@@ -9,18 +17,153 @@ export type InterceptorOptions = {
   interceptor: RequestInterceptor;
 };
 
+type GlobalWithHooks = typeof globalThis & {
+  beforeAll?: (callback: () => void) => void;
+  afterAll?: (callback: () => void) => void;
+  beforeEach?: (callback: () => void) => void;
+  afterEach?: (callback: () => void) => void;
+};
+
+class IntersectionObserverEntryStub implements IntersectionObserverEntry {
+  readonly boundingClientRect: DOMRectReadOnly;
+  readonly intersectionRatio: number;
+  readonly intersectionRect: DOMRectReadOnly;
+  readonly isIntersecting: boolean;
+  readonly rootBounds: DOMRectReadOnly | null;
+  readonly target: Element;
+  readonly time: number;
+
+  constructor(
+    target: Element,
+    boundingClientRect: DOMRectReadOnly,
+    intersectionRect: DOMRectReadOnly,
+    intersectionRatio: number,
+    rootBounds: DOMRectReadOnly | null,
+    time: number,
+    isIntersecting = intersectionRatio > 0
+  ) {
+    this.boundingClientRect = boundingClientRect;
+    this.intersectionRect = intersectionRect;
+    this.intersectionRatio = intersectionRatio;
+    this.isIntersecting = isIntersecting;
+    this.rootBounds = rootBounds;
+    this.target = target;
+    this.time = time;
+  }
+}
+
+const installJsdomTestingMocks = (window: DOMWindow) => {
+  const globalWithHooks = globalThis as GlobalWithHooks;
+  const noopHook = () => {};
+
+  configMocks({
+    beforeAll: globalWithHooks.beforeAll ?? noopHook,
+    afterAll: globalWithHooks.afterAll ?? noopHook,
+    beforeEach: globalWithHooks.beforeEach ?? noopHook,
+    afterEach: globalWithHooks.afterEach ?? noopHook,
+    act: (trigger) => trigger()
+  });
+
+  const previousGlobals: Record<string, unknown> = {};
+  const setGlobal = (key: string, value: unknown) => {
+    previousGlobals[key] = (globalThis as Record<string, unknown>)[key];
+    (globalThis as Record<string, unknown>)[key] = value;
+  };
+  const restoreGlobals = () => {
+    const preserveIfUndefined = new Set(["DOMRectReadOnly", "DOMRect"]);
+    for (const key of Object.keys(previousGlobals)) {
+      const value = previousGlobals[key];
+      if (value === undefined) {
+        if (preserveIfUndefined.has(key)) {
+          continue;
+        }
+        delete (globalThis as Record<string, unknown>)[key];
+      } else {
+        (globalThis as Record<string, unknown>)[key] = value;
+      }
+    }
+  };
+
+  try {
+    setGlobal("window", window);
+    setGlobal("document", window.document);
+    setGlobal("Element", window.Element);
+    setGlobal("Document", window.Document);
+    setGlobal("HTMLElement", window.HTMLElement);
+    setGlobal("Event", window.Event);
+    setGlobal("DOMRect", window.DOMRect);
+    setGlobal("DOMRectReadOnly", window.DOMRectReadOnly);
+    setGlobal("performance", window.performance);
+
+    if (typeof window.matchMedia !== "function") {
+      mockViewport({ width: "1024px", height: "768px" });
+    }
+    if (typeof window.IntersectionObserver !== "function") {
+      mockIntersectionObserver();
+    }
+    if (typeof window.IntersectionObserverEntry !== "function") {
+      window.IntersectionObserverEntry = IntersectionObserverEntryStub;
+    }
+    if (typeof window.ResizeObserver !== "function") {
+      mockResizeObserver();
+    }
+    if (typeof window.Element?.prototype.animate !== "function") {
+      mockAnimationsApi();
+    }
+    if (typeof (window as { CSS?: unknown }).CSS === "undefined") {
+      mockCSSTypedOM();
+      const cssGlobals = [
+        "CSS",
+        "CSSNumericValue",
+        "CSSUnitValue",
+        "CSSMathValue",
+        "CSSMathSum",
+        "CSSMathProduct",
+        "CSSMathNegate",
+        "CSSMathInvert",
+        "CSSMathMin",
+        "CSSMathMax",
+        "CSSMathClamp"
+      ];
+      for (const key of cssGlobals) {
+        const value = (globalThis as Record<string, unknown>)[key];
+        if (value) {
+          (window as Record<string, unknown>)[key] = value;
+        }
+      }
+    }
+  } finally {
+    restoreGlobals();
+  }
+};
+
 export function createJSDOMWithInterceptor(options: InterceptorOptions) {
   const resources = new InterceptingResourceLoader(options.interceptor);
   const domOptions = options.domOptions ?? {};
   const userBeforeParse = domOptions.beforeParse;
+  const virtualConsole =
+    domOptions.virtualConsole ??
+    (() => {
+      const consoleShim = new VirtualConsole();
+      consoleShim.on("jsdomError", (error) => {
+        if (error.message.includes("Could not parse CSS stylesheet")) {
+          return;
+        }
+        console.error(error);
+      });
+      return consoleShim;
+    })();
 
   const dom = new JSDOM(options.html, {
     ...domOptions,
+    virtualConsole,
     resources,
     beforeParse(window: DOMWindow) {
       if (userBeforeParse) {
         userBeforeParse(window);
       }
+
+      installJsdomTestingMocks(window);
 
       if (typeof window.matchMedia !== "function") {
         window.matchMedia = (query: string) =>
@@ -42,40 +185,8 @@ export function createJSDOMWithInterceptor(options: InterceptorOptions) {
           CanvasRenderingContext2DStub as typeof CanvasRenderingContext2D;
       }
 
-      const ignoreDocumentEvents = new Set(["DOMContentLoaded", "load"]);
-      const originalDocumentAddEventListener = window.document.addEventListener.bind(
-        window.document
-      ) as Document["addEventListener"];
-      window.document.addEventListener = function addEventListener(
-        type: string,
-        listener: EventListenerOrEventListenerObject | null,
-        options?: boolean | AddEventListenerOptions
-      ) {
-        if (typeof type === "string" && ignoreDocumentEvents.has(type)) {
-          return;
-        }
-        if (!listener) {
-          return;
-        }
-        return originalDocumentAddEventListener(type as keyof DocumentEventMap, listener, options);
-      };
-
-      const originalWindowAddEventListener = window.addEventListener.bind(
-        window
-      ) as Window["addEventListener"];
-      window.addEventListener = function addEventListener(
-        type: string,
-        listener: EventListenerOrEventListenerObject | null,
-        options?: boolean | AddEventListenerOptions
-      ) {
-        if (typeof type === "string" && ignoreDocumentEvents.has(type)) {
-          return;
-        }
-        if (!listener) {
-          return;
-        }
-        return originalWindowAddEventListener(type as keyof WindowEventMap, listener, options);
-      };
+      window.scrollBy = () => {};
+      window.scrollTo = () => {};
 
       if (window.HTMLCanvasElement?.prototype) {
         const canvasProto = window.HTMLCanvasElement.prototype;
@@ -498,8 +609,27 @@ export function createJSDOMWithInterceptor(options: InterceptorOptions) {
   });
 
   scanDocumentRequests(dom.window, options.interceptor);
+  triggerHoverSweep(dom.window);
 
   return dom;
+}
+
+function triggerHoverSweep(window: DOMWindow) {
+  const fire = () => {
+    const eventInit: EventInit = { bubbles: true, cancelable: true };
+    window.document.querySelectorAll("*").forEach((element) => {
+      element.dispatchEvent(new window.Event("mouseover", eventInit));
+      element.dispatchEvent(new window.Event("mouseenter", eventInit));
+    });
+  };
+
+  if (window.document.readyState === "complete") {
+    fire();
+    return;
+  }
+
+  window.addEventListener("load", fire, { once: true });
+  window.setTimeout(fire, 0);
 }
 
 function scanDocumentRequests(window: DOMWindow, interceptor: RequestInterceptor) {

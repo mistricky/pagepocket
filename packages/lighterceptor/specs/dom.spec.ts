@@ -68,7 +68,33 @@ log.length;
     expect(errors).toHaveLength(0);
   });
 
-  it("does not emit jsdom errors from DOMContentLoaded handlers", async () => {
+  it("installs jsdom-testing-mocks API shims", () => {
+    const dom = createJSDOMWithInterceptor({
+      html: "<!doctype html><div></div>",
+      domOptions: {
+        runScripts: "dangerously"
+      },
+      interceptor: async () => Buffer.from("")
+    });
+
+    const { window } = dom;
+    expect(typeof window.matchMedia).toBe("function");
+    expect(typeof window.IntersectionObserver).toBe("function");
+    expect(typeof window.IntersectionObserverEntry).toBe("function");
+    expect(typeof window.ResizeObserver).toBe("function");
+    expect(typeof window.Element.prototype.animate).toBe("function");
+    expect(typeof (window as { CSS?: unknown }).CSS).toBe("object");
+    expect(typeof (window as { CSS?: { px?: unknown } }).CSS?.px).toBe("function");
+
+    const io = new window.IntersectionObserver(() => {});
+    io.observe(window.document.body);
+    const ro = new window.ResizeObserver(() => {});
+    ro.observe(window.document.body);
+    const mediaMatches = window.matchMedia("(min-width: 1px)").matches;
+    expect(typeof mediaMatches).toBe("boolean");
+  });
+
+  it("emits jsdom errors from DOMContentLoaded handlers", async () => {
     const errors = await runWithDomErrors(`<!doctype html>
 <script>
 document.addEventListener("DOMContentLoaded", () => {
@@ -76,6 +102,39 @@ document.addEventListener("DOMContentLoaded", () => {
   oops.load();
 });
 </script>`);
-    expect(errors).toHaveLength(0);
+    expect(errors.length).toBeGreaterThan(0);
+  });
+
+  it("emits jsdom errors from load handlers", async () => {
+    const errors = await runWithDomErrors(`<!doctype html>
+<script>
+window.addEventListener("load", () => {
+  const oops = undefined;
+  oops.load();
+});
+window.dispatchEvent(new Event("load"));
+</script>`);
+    expect(errors.length).toBeGreaterThan(0);
+  });
+
+  it("dispatches hover events after load", async () => {
+    const html = `<!doctype html>
+<div id="target"></div>
+<script>
+window.__hovered = false;
+document.getElementById("target").addEventListener("mouseover", () => {
+  window.__hovered = true;
+});
+</script>`;
+    const dom = createJSDOMWithInterceptor({
+      html,
+      domOptions: {
+        runScripts: "dangerously"
+      },
+      interceptor: async () => Buffer.from("")
+    });
+
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    expect((dom.window as { __hovered?: boolean }).__hovered).toBe(true);
   });
 });

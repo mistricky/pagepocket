@@ -266,7 +266,71 @@ export class Lighterceptor {
           runScripts: "dangerously",
           url: baseUrl,
           beforeParse(window) {
-            window.fetch = () => Promise.resolve({ ok: true }) as unknown as Promise<Response>;
+            const createStubResponse = (url: string) => {
+              const normalizedUrl = url.toLowerCase();
+              const bodyText = normalizedUrl.endsWith("/figma/manifest.json")
+                ? JSON.stringify({ figures: [], svgs: [] })
+                : normalizedUrl.includes("/features/") && normalizedUrl.endsWith(".json")
+                  ? JSON.stringify({
+                      isDead: true,
+                      statistics: {},
+                      examples_quantiles: []
+                    })
+                  : "";
+              const encoder = typeof TextEncoder === "function" ? new TextEncoder() : undefined;
+              const buffer = encoder ? encoder.encode(bodyText).buffer : new ArrayBuffer(0);
+              const headers =
+                typeof window.Headers === "function"
+                  ? new window.Headers()
+                  : ({
+                      append: () => {},
+                      delete: () => {},
+                      get: () => null,
+                      getSetCookie: () => [],
+                      has: () => false,
+                      set: () => {},
+                      forEach: () => {},
+                      keys: () => [][Symbol.iterator](),
+                      values: () => [][Symbol.iterator](),
+                      entries: () => [][Symbol.iterator](),
+                      [Symbol.iterator]: () => [][Symbol.iterator]()
+                    } as Headers);
+
+              const responseUrl = url;
+              const response = {
+                ok: true,
+                status: 200,
+                statusText: "OK",
+                headers,
+                json: async () => {
+                  if (!bodyText) {
+                    return {};
+                  }
+                  try {
+                    return JSON.parse(bodyText) as unknown;
+                  } catch {
+                    return {};
+                  }
+                },
+                text: async () => bodyText,
+                arrayBuffer: async () => buffer,
+                clone: () => createStubResponse(responseUrl)
+              };
+
+              return response as Response;
+            };
+
+            window.fetch = ((input: RequestInfo | URL) => {
+              let url = "";
+              if (typeof input === "string") {
+                url = input;
+              } else if (input instanceof URL) {
+                url = input.toString();
+              } else if ("url" in input) {
+                url = String(input.url);
+              }
+              return Promise.resolve(createStubResponse(url)) as Promise<Response>;
+            }) as typeof window.fetch;
             window.XMLHttpRequest.prototype.send = function send() {};
           }
         },
