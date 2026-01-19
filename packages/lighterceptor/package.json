@@ -18,6 +18,9 @@
     "jsdom": "^26.0.0",
     "jsdom-testing-mocks": "^1.16.0"
   },
+  "files": [
+    "dist"
+  ],
   "devDependencies": {
     "@types/jsdom": "^27.0.0",
     "@types/node": "^20.17.12",
