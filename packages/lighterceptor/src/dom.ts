@@ -22,6 +22,129 @@ export function createJSDOMWithInterceptor(options: InterceptorOptions) {
         userBeforeParse(window);
       }
 
+      if (typeof window.matchMedia !== "function") {
+        window.matchMedia = (query: string) =>
+          ({
+            matches: false,
+            media: String(query),
+            onchange: null,
+            addListener: () => {},
+            removeListener: () => {},
+            addEventListener: () => {},
+            removeEventListener: () => {},
+            dispatchEvent: () => false
+          }) as MediaQueryList;
+      }
+
+      if (typeof window.CanvasRenderingContext2D !== "function") {
+        class CanvasRenderingContext2DStub {}
+        window.CanvasRenderingContext2D =
+          CanvasRenderingContext2DStub as typeof CanvasRenderingContext2D;
+      }
+
+      const ignoreDocumentEvents = new Set(["DOMContentLoaded", "load"]);
+      const originalDocumentAddEventListener = window.document.addEventListener.bind(
+        window.document
+      ) as Document["addEventListener"];
+      window.document.addEventListener = function addEventListener(
+        type: string,
+        listener: EventListenerOrEventListenerObject | null,
+        options?: boolean | AddEventListenerOptions
+      ) {
+        if (typeof type === "string" && ignoreDocumentEvents.has(type)) {
+          return;
+        }
+        if (!listener) {
+          return;
+        }
+        return originalDocumentAddEventListener(type as keyof DocumentEventMap, listener, options);
+      };
+
+      const originalWindowAddEventListener = window.addEventListener.bind(
+        window
+      ) as Window["addEventListener"];
+      window.addEventListener = function addEventListener(
+        type: string,
+        listener: EventListenerOrEventListenerObject | null,
+        options?: boolean | AddEventListenerOptions
+      ) {
+        if (typeof type === "string" && ignoreDocumentEvents.has(type)) {
+          return;
+        }
+        if (!listener) {
+          return;
+        }
+        return originalWindowAddEventListener(type as keyof WindowEventMap, listener, options);
+      };
+
+      if (window.HTMLCanvasElement?.prototype) {
+        const canvasProto = window.HTMLCanvasElement.prototype;
+        canvasProto.getContext = function getContext(type?: string) {
+          const normalized = String(type ?? "").toLowerCase();
+          if (normalized === "2d" || normalized === "bitmaprenderer") {
+            return new window.CanvasRenderingContext2D();
+          }
+
+          const glState = {
+            program: {},
+            shader: {}
+          };
+
+          const glStub = new Proxy(
+            {},
+            {
+              get: (_target, prop) => {
+                if (prop === "canvas") {
+                  return this;
+                }
+                if (prop === "drawingBufferWidth" || prop === "drawingBufferHeight") {
+                  return 0;
+                }
+                if (prop === "getExtension") {
+                  return () => null;
+                }
+                if (prop === "getContextAttributes") {
+                  return () => ({});
+                }
+                if (prop === "getShaderInfoLog" || prop === "getProgramInfoLog") {
+                  return () => "";
+                }
+                if (prop === "getShaderParameter" || prop === "getProgramParameter") {
+                  return () => true;
+                }
+                if (prop === "createShader") {
+                  return () => glState.shader;
+                }
+                if (prop === "createProgram") {
+                  return () => glState.program;
+                }
+                if (
+                  prop === "shaderSource" ||
+                  prop === "compileShader" ||
+                  prop === "attachShader" ||
+                  prop === "linkProgram" ||
+                  prop === "useProgram"
+                ) {
+                  return () => undefined;
+                }
+                if (prop === "getAttribLocation") {
+                  return () => 0;
+                }
+                if (prop === "getUniformLocation") {
+                  return () => ({});
+                }
+                if (typeof prop === "string" && prop === prop.toUpperCase()) {
+                  return 0;
+                }
+                return () => null;
+              }
+            }
+          );
+
+          return glStub as unknown as RenderingContext;
+        };
+      }
+
       const extractCssUrls = (cssText: string) => {
         const urls: string[] = [];
         const pattern = /url\(\s*(['"]?)(.*?)\1\s*\)/gi;
