@@ -6,12 +6,14 @@
     "build": "pnpm -r build",
     "lint": "eslint \"packages/**/*.ts\"",
     "lint:fix": "eslint \"packages/**/*.ts\" --fix",
-    "test": "pnpm -r test"
+    "test": "pnpm -r test",
+    "version": "changeset"
   },
   "devDependencies": {
     "@eslint/js": "^9.39.2",
     "@typescript-eslint/eslint-plugin": "^8.53.0",
     "@typescript-eslint/parser": "^8.53.0",
+    "changeset": "^0.2.6",
     "eslint": "^9.39.2",
     "eslint-config-prettier": "^10.1.8",
     "eslint-plugin-import": "^2.32.0",
