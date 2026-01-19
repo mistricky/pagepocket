@@ -112,4 +112,81 @@ describe("Lighterceptor run", () => {
       vi.unstubAllGlobals();
     }
   });
+
+  it("captures Image src set via inline script variable", async () => {
+    const lighterceptor = new Lighterceptor(
+      `<html><script>
+const foo = new Image();
+const url = "https://example.com/variable-image.png";
+foo.src = url;
+</script></html>`,
+      { requestOnly: true }
+    );
+
+    const result = await lighterceptor.run();
+    expect(result.requests.some((item) => item.url.includes("variable-image.png"))).toBe(true);
+  });
+
+  it("captures Image src set via inline script template string", async () => {
+    const lighterceptor = new Lighterceptor(
+      `<html><script>
+const foo = new Image();
+const name = "template-image";
+foo.src = \`https://example.com/\${name}.png\`;
+</script></html>`,
+      { requestOnly: true }
+    );
+
+    const result = await lighterceptor.run();
+    expect(result.requests.some((item) => item.url.includes("template-image.png"))).toBe(true);
+  });
+
+  it("captures Image src set via inline script concatenation", async () => {
+    const lighterceptor = new Lighterceptor(
+      `<html><script>
+const foo = new Image();
+const base = "https://example.com/";
+const path = "concat-image.png";
+foo.src = base + path;
+</script></html>`,
+      { requestOnly: true }
+    );
+
+    const result = await lighterceptor.run();
+    expect(result.requests.some((item) => item.url.includes("concat-image.png"))).toBe(true);
+  });
+
+  it("captures Image src set via external script", async () => {
+    const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
+      const url = typeof input === "string" ? input : input.toString();
+      if (url === "https://example.com/app.js") {
+        return new Response(
+          `
+const foo = new Image();
+foo.src = "https://example.com/external-image.png";
+`,
+          {
+            status: 200,
+            headers: {
+              "content-type": "text/javascript"
+            }
+          }
+        );
+      }
+      return new Response("", { status: 404 });
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    try {
+      const lighterceptor = new Lighterceptor(
+        `<html><script src="https://example.com/app.js"></script></html>`,
+        { requestOnly: true, recursion: true }
+      );
+
+      const result = await lighterceptor.run();
+      expect(result.requests.some((item) => item.url.includes("external-image.png"))).toBe(true);
+    } finally {
+      vi.unstubAllGlobals();
+    }
+  });
 });

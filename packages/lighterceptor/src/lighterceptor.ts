@@ -270,7 +270,7 @@ export class Lighterceptor {
             window.XMLHttpRequest.prototype.send = function send() {};
           }
         },
-        interceptor: (url, options) => {
+        interceptor: async (url, options) => {
           const resolved = resolveUrl(options.referrer, url);
           if (!resolved) {
             return Buffer.from("");
@@ -278,6 +278,15 @@ export class Lighterceptor {
 
           const source = options.source ?? "unknown";
           recordUrl(resolved, source);
+
+          const element = options.element as Element | undefined;
+          const tagName = element?.tagName?.toLowerCase();
+          if (recursive && tagName === "script") {
+            const result = await fetchWithCache(resolved);
+            if (result.ok && result.buffer) {
+              return result.buffer;
+            }
+          }
 
           if (recursive) {
             if (source === "fetch" || source === "xhr") {
