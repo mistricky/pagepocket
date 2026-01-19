@@ -26,12 +26,29 @@ export type NetworkRecord = {
   timestamp: number;
 };
 
+export type LighterceptorResponseRecord = {
+  status: number;
+  statusText: string;
+  headers: Record<string, string>;
+  body: string;
+  bodyEncoding: "text" | "base64";
+};
+
+export type LighterceptorNetworkRecord = {
+  url: string;
+  source?: string;
+  method: string;
+  timestamp: number;
+  response?: LighterceptorResponseRecord;
+  error?: string;
+};
+
 export type SnapshotData = {
   url: string;
   title: string;
   capturedAt: string;
   fetchXhrRecords: FetchRecord[];
-  networkRecords: NetworkRecord[];
+  networkRecords: LighterceptorNetworkRecord[];
   resources: Array<{
     url: string;
     localPath: string;

@@ -1,5 +1,4 @@
-import type { CaptureContext, CaptureHacker, ScriptHacker } from "./types";
-import { captureNetworkRecorder } from "./capture-network";
+import type { ScriptHacker } from "./types";
 import { preloadFetchRecorder } from "./preload-fetch";
 import { preloadXhrRecorder } from "./preload-xhr";
 import { replayFetchResponder } from "./replay-fetch";
@@ -21,11 +20,3 @@ export const replayHackers: ScriptHacker[] = [
   replayWebSocketStub,
   replayEventSourceStub
 ];
-
-export const captureHackers: CaptureHacker[] = [captureNetworkRecorder];
-
-export const applyCaptureHackers = async (context: CaptureContext) => {
-  for (const hacker of captureHackers) {
-    await hacker.apply(context);
-  }
-};

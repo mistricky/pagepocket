@@ -1,0 +1,43 @@
+{
+  "name": "pagepocket",
+  "version": "0.2.4",
+  "description": "",
+  "main": "dist/index.js",
+  "scripts": {
+    "build": "tsc",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "start": "node dist/index.js",
+    "test": "tsx --test specs/**/*.test.ts"
+  },
+  "bin": {
+    "pp": "dist/index.js"
+  },
+  "files": [
+    "dist"
+  ],
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "packageManager": "pnpm@10.25.0",
+  "dependencies": {
+    "@oclif/core": "^4.0.9",
+    "cheerio": "^1.0.0-rc.12",
+    "chalk": "^4.1.2",
+    "lighterceptor": "workspace:*",
+    "ora": "^9.0.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20.11.30",
+    "prettier": "^3.7.4",
+    "tsx": "^4.19.3",
+    "typescript": "^5.4.5"
+  },
+  "oclif": {
+    "bin": "pp",
+    "commands": {
+      "strategy": "single",
+      "target": "dist/cli.js"
+    }
+  }
+}

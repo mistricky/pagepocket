@@ -122,9 +122,33 @@ export const buildReplayScript = (requestsPath: string, baseUrl: string) => {
   const makeVariantKeys = (method, url, body) => {
     return expandUrlVariants(url).map((variant) => makeKey(method, variant, body));
   };
+  const normalizeNetworkRecord = (record) => {
+    if (!record || typeof record !== "object") {
+      return record;
+    }
+    if (record.response && record.response.body !== undefined) {
+      const response = record.response || {};
+      const encoding = response.bodyEncoding || "text";
+      return {
+        url: record.url,
+        method: record.method || "GET",
+        requestBody: record.requestBody || "",
+        status: response.status,
+        statusText: response.statusText,
+        responseHeaders: response.headers,
+        responseBody: encoding === "text" ? response.body : undefined,
+        responseBodyBase64: encoding === "base64" ? response.body : undefined,
+        responseEncoding: encoding,
+        error: record.error,
+        timestamp: record.timestamp
+      };
+    }
+    return record;
+  };
+
   const primeLookups = (snapshot) => {
     records = snapshot.fetchXhrRecords || [];
-    networkRecords = snapshot.networkRecords || [];
+    networkRecords = (snapshot.networkRecords || []).map(normalizeNetworkRecord);
     byKey.clear();
     localResourceSet.clear();
     resourceUrlMap.clear();

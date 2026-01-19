@@ -4,14 +4,12 @@ import * as cheerio from "cheerio";
 import { Args, Command, Flags } from "@oclif/core";
 import chalk from "chalk";
 import ora from "ora";
-import puppeteer from "puppeteer";
+import { Lighterceptor } from "lighterceptor";
 import { buildDataUrlMap, rewriteCssUrls } from "./lib/css-rewrite";
 import { safeFilename } from "./lib/filename";
-import { applyCaptureHackers } from "./lib/hackers";
 import { buildReplayScript } from "./lib/replay-script";
 import { applyResourceMapToDom, downloadResource, extractResourceUrls } from "./lib/resources";
-import type { NetworkRecord, SnapshotData } from "./lib/types";
-import { buildPreloadScript } from "./preload";
+import type { LighterceptorNetworkRecord, NetworkRecord, SnapshotData } from "./lib/types";
 
 const getHeaderValue = (headers: Record<string, string>, name: string) => {
   for (const key in headers) {
@@ -61,6 +59,27 @@ const findFaviconDataUrl = (records: NetworkRecord[]) => {
   return null;
 };
 
+const mapLighterceptorRecords = (
+  records: LighterceptorNetworkRecord[] | undefined
+): NetworkRecord[] => {
+  if (!records) return [];
+  return records.map((record) => {
+    const response = record.response;
+    return {
+      url: record.url,
+      method: record.method,
+      status: response?.status,
+      statusText: response?.statusText,
+      responseHeaders: response?.headers,
+      responseBody: response?.bodyEncoding === "text" ? response.body : undefined,
+      responseBodyBase64: response?.bodyEncoding === "base64" ? response.body : undefined,
+      responseEncoding: response?.bodyEncoding,
+      error: record.error,
+      timestamp: record.timestamp
+    };
+  });
+};
+
 export default class PagepocketCommand extends Command {
   static description = "Save a snapshot of a web page.";
 
@@ -86,108 +105,47 @@ export default class PagepocketCommand extends Command {
     const targetUrl = args.url;
     const outputFlag = flags.output ? flags.output.trim() : undefined;
 
-    // Build the preload script so it can record fetch/XHR data in the page context.
-    const preloadScript = buildPreloadScript();
+    const networkSpinner = ora("Capturing network requests with lighterceptor").start();
+    let networkRecords: NetworkRecord[] = [];
+    let lighterceptorNetworkRecords: LighterceptorNetworkRecord[] = [];
+    let capturedTitle: string | undefined;
+    try {
+      const result = await new Lighterceptor(targetUrl, { recursion: true }).run();
+      lighterceptorNetworkRecords = (result.networkRecords ?? []) as LighterceptorNetworkRecord[];
+      networkRecords = mapLighterceptorRecords(lighterceptorNetworkRecords);
+      capturedTitle = result.title;
+      networkSpinner.succeed(`Captured ${networkRecords.length} network responses`);
+    } catch (error) {
+      networkSpinner.fail("Failed to capture network requests");
+    }
 
-    // Launch a headless browser to capture both DOM and network activity.
-    const browser = await puppeteer.launch({
-      headless: true
-    });
+    const visitSpinner = ora("Fetching the target HTML").start();
+    const fetchTimeoutMs = Number(process.env.PAGEPOCKET_FETCH_TIMEOUT_MS || "60000");
+    let html = "";
+    let title = "snapshot";
+    const fetchXhrRecords: SnapshotData["fetchXhrRecords"] = [];
 
-    const page = await browser.newPage();
-    const navigationTimeoutMs = Number(process.env.PAGEPOCKET_NAV_TIMEOUT_MS || "60000");
-    const pendingTimeoutMs = Number(process.env.PAGEPOCKET_PENDING_TIMEOUT_MS || "40000");
-    page.setDefaultNavigationTimeout(navigationTimeoutMs);
+    try {
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), fetchTimeoutMs);
+      const response = await fetch(targetUrl, {
+        signal: controller.signal,
+        redirect: "follow"
+      });
+      clearTimeout(timeout);
 
-    // Accumulate network traffic so the replay script can serve responses offline.
-    const networkRecords: NetworkRecord[] = [];
-    await applyCaptureHackers({ stage: "capture", page, networkRecords });
-
-    // Inject the recording script before any document scripts run.
-    await page.evaluateOnNewDocument(preloadScript);
-
-    const visitSpinner = ora("Visiting the target site").start();
-
-    // Navigate, wait for the page to settle, then capture HTML and recorded requests.
-    const snapshot = await (async () => {
-      try {
-        const response = await page.goto(targetUrl, {
-          waitUntil: "domcontentloaded",
-          timeout: navigationTimeoutMs
-        });
-
-        await page.waitForSelector("body", { timeout: 15000 });
-        await page.waitForNetworkIdle({ idleTime: 5000, timeout: 30000 }).catch(() => undefined);
-        await page
-          .waitForFunction(() => (window as any).__pagepocketPendingRequests === 0, {
-            timeout: pendingTimeoutMs
-          })
-          .catch(() => undefined);
-        await new Promise((resolve) => setTimeout(resolve, 2000));
-
-        const hoverSpinner = ora("Trigger requests").start();
-        try {
-          await page.evaluate(() => {
-            const events = ["mouseover", "mouseenter", "mousemove"];
-            const elements = Array.from(document.querySelectorAll("*"));
-            for (const el of elements) {
-              try {
-                const rect = el.getBoundingClientRect();
-                const hasSize = rect && rect.width >= 1 && rect.height >= 1;
-                const clientX = hasSize ? rect.left + rect.width / 2 : 0;
-                const clientY = hasSize ? rect.top + rect.height / 2 : 0;
-                for (const type of events) {
-                  const evt = new MouseEvent(type, {
-                    bubbles: true,
-                    cancelable: true,
-                    view: window,
-                    clientX,
-                    clientY
-                  });
-                  el.dispatchEvent(evt);
-                }
-              } catch {}
-            }
-          });
-          hoverSpinner.succeed("Hovered elements to trigger hover requests");
-        } catch (hoverError) {
-          hoverSpinner.fail("Failed to hover elements");
-          throw hoverError;
-        }
-
-        await page.waitForNetworkIdle({ idleTime: 5000, timeout: 30000 }).catch(() => undefined);
-        await page
-          .waitForFunction(() => (window as any).__pagepocketPendingRequests === 0, {
-            timeout: pendingTimeoutMs
-          })
-          .catch(() => undefined);
-        await new Promise((resolve) => setTimeout(resolve, 2000));
-
-        visitSpinner.succeed("Visited the target site");
-
-        const responseHtml = response ? await response.text() : "";
-        const resolvedHtml = responseHtml || (await page.content());
-        const $initial = cheerio.load(resolvedHtml);
-        const resolvedTitle = $initial("title").first().text() || "snapshot";
-        const resolvedFetchXhrRecords = await page.evaluate(() => {
-          return (window as any).__pagepocketRecords || [];
-        });
-
-        return {
-          title: resolvedTitle,
-          html: resolvedHtml,
-          fetchXhrRecords: resolvedFetchXhrRecords
-        };
-      } catch (error) {
-        visitSpinner.fail("Failed to visit the target site");
-        throw error;
-      } finally {
-        await page.close();
-        await browser.close();
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status} ${response.statusText}`);
       }
-    })();
 
-    const { title, html, fetchXhrRecords } = snapshot;
+      html = await response.text();
+      const $initial = cheerio.load(html);
+      title = $initial("title").first().text() || capturedTitle || "snapshot";
+      visitSpinner.succeed("Fetched the target HTML");
+    } catch (error) {
+      visitSpinner.fail("Failed to fetch the target HTML");
+      throw error;
+    }
 
     const faviconDataUrl = findFaviconDataUrl(networkRecords);
 
@@ -264,7 +222,7 @@ export default class PagepocketCommand extends Command {
       title,
       capturedAt: new Date().toISOString(),
       fetchXhrRecords,
-      networkRecords,
+      networkRecords: lighterceptorNetworkRecords,
       resources: resourceMeta
     };
 
