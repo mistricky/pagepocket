@@ -107,20 +107,6 @@ export default class PagepocketCommand extends Command {
     const targetUrl = args.url;
     const outputFlag = flags.output ? flags.output.trim() : undefined;
 
-    const networkSpinner = ora("Capturing network requests with lighterceptor").start();
-    let networkRecords: NetworkRecord[] = [];
-    let lighterceptorNetworkRecords: LighterceptorNetworkRecord[] = [];
-    let capturedTitle: string | undefined;
-    try {
-      const result = await new Lighterceptor(targetUrl, { recursion: true }).run();
-      lighterceptorNetworkRecords = (result.networkRecords ?? []) as LighterceptorNetworkRecord[];
-      networkRecords = mapLighterceptorRecords(lighterceptorNetworkRecords);
-      capturedTitle = result.title;
-      networkSpinner.succeed(`Captured ${networkRecords.length} network responses`);
-    } catch {
-      networkSpinner.fail("Failed to capture network requests");
-    }
-
     const visitSpinner = ora("Fetching the target HTML").start();
     const fetchTimeoutMs = Number(process.env.PAGEPOCKET_FETCH_TIMEOUT_MS || "60000");
     let html = "";
@@ -142,11 +128,28 @@ export default class PagepocketCommand extends Command {
 
       html = await response.text();
       const $initial = cheerio.load(html);
-      title = $initial("title").first().text() || capturedTitle || "snapshot";
+      title = $initial("title").first().text() || "snapshot";
       visitSpinner.succeed("Fetched the target HTML");
     } catch (error) {
       visitSpinner.fail("Failed to fetch the target HTML");
       throw error;
+    }
+
+    const networkSpinner = ora("Capturing network requests with lighterceptor").start();
+    let networkRecords: NetworkRecord[] = [];
+    let lighterceptorNetworkRecords: LighterceptorNetworkRecord[] = [];
+    let capturedTitle: string | undefined;
+    try {
+      const result = await new Lighterceptor(targetUrl, { recursion: true }).run();
+      lighterceptorNetworkRecords = (result.networkRecords ?? []) as LighterceptorNetworkRecord[];
+      networkRecords = mapLighterceptorRecords(lighterceptorNetworkRecords);
+      capturedTitle = result.title;
+      if (title === "snapshot" && capturedTitle) {
+        title = capturedTitle;
+      }
+      networkSpinner.succeed(`Captured ${networkRecords.length} network responses`);
+    } catch {
+      networkSpinner.fail("Failed to capture network requests");
     }
 
     const faviconDataUrl = findFaviconDataUrl(networkRecords);
@@ -255,5 +258,6 @@ export default class PagepocketCommand extends Command {
     this.log(`HTML saved to ${chalk.cyan(outputHtmlPath)}`);
     this.log(`Requests saved to ${chalk.cyan(outputRequestsPath)}`);
     this.log(`Resources saved to ${chalk.cyan(resourcesDir)}`);
+    process.exit();
   }
 }
