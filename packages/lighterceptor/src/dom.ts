@@ -145,12 +145,7 @@ export function createJSDOMWithInterceptor(options: InterceptorOptions) {
     domOptions.virtualConsole ??
     (() => {
       const consoleShim = new VirtualConsole();
-      consoleShim.on("jsdomError", (error) => {
-        if (error.message.includes("Could not parse CSS stylesheet")) {
-          return;
-        }
-        console.error(error);
-      });
+      consoleShim.on("jsdomError", () => {});
       return consoleShim;
     })();
 

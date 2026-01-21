@@ -30,7 +30,7 @@ export const replayDomRewriter: ScriptHacker = {
     }
   };
 
-  // Rewrite srcset values so each candidate is local or data-backed.
+  // Rewrite srcset values to local files only (avoid data: URLs in srcset).
   const rewriteSrcset = (value) => {
     if (!value) return value;
     return value.split(",").map((part) => {
@@ -44,9 +44,7 @@ export const replayDomRewriter: ScriptHacker = {
       if (localPath) {
         return descriptor ? localPath + " " + descriptor : localPath;
       }
-      const record = findByUrl(url);
-      const replacement = record ? toDataUrl(record) : transparentGif;
-      return descriptor ? replacement + " " + descriptor : replacement;
+      return trimmed;
     }).join(", ");
   };
 

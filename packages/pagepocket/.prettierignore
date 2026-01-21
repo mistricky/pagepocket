@@ -1,0 +1,6 @@
+dist
+node_modules
+resources
+*.html
+*.requests.json
+*_files
