@@ -7,7 +7,8 @@
     "lint": "eslint \"packages/**/*.ts\"",
     "lint:fix": "eslint \"packages/**/*.ts\" --fix",
     "test": "pnpm -r test",
-    "set-version": "npx tsx ./scripts/release-version.ts"
+    "set-version": "npx tsx ./scripts/release-version.ts",
+    "publish-packages": "pnpm publish -r --no-git-checks --access=public"
   },
   "devDependencies": {
     "@changesets/cli": "^2.29.8",
