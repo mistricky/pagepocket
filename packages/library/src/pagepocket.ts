@@ -1,9 +1,9 @@
 import { downloadResources, type DownloadedResource } from "./download-resources";
 import { hackHtml } from "./hack-html";
-import { mapLighterceptorRecords, findFaviconDataUrl } from "./network-records";
+import { mapCapturedNetworkRecords, findFaviconDataUrl } from "./network-records";
 import { extractResourceUrls } from "./resources";
 import { rewriteLinks } from "./rewrite-links";
-import type { LighterceptorNetworkRecord, NetworkRecord, SnapshotData } from "./types";
+import type { CapturedNetworkRecord, NetworkRecord, SnapshotData } from "./types";
 
 export type PagePocketOptions = {
   assetsDirName?: string;
@@ -35,8 +35,8 @@ const parseRequestsJson = (requestsJSON: RequestsInput): ParsedRequests => {
   const snapshot =
     typeof requestsJSON === "string" ? (JSON.parse(requestsJSON) as SnapshotData) : requestsJSON;
 
-  const rawNetworkRecords = (snapshot.networkRecords || []) as LighterceptorNetworkRecord[];
-  const mappedNetworkRecords = mapLighterceptorRecords(rawNetworkRecords);
+  const rawNetworkRecords = (snapshot.networkRecords || []) as CapturedNetworkRecord[];
+  const mappedNetworkRecords = mapCapturedNetworkRecords(rawNetworkRecords);
 
   return {
     snapshot,

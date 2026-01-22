@@ -26,7 +26,7 @@ export type NetworkRecord = {
   timestamp: number;
 };
 
-export type LighterceptorResponseRecord = {
+export type CapturedResponseRecord = {
   status: number;
   statusText: string;
   headers: Record<string, string>;
@@ -34,12 +34,12 @@ export type LighterceptorResponseRecord = {
   bodyEncoding: "text" | "base64";
 };
 
-export type LighterceptorNetworkRecord = {
+export type CapturedNetworkRecord = {
   url: string;
   source?: string;
   method: string;
   timestamp: number;
-  response?: LighterceptorResponseRecord;
+  response?: CapturedResponseRecord;
   error?: string;
 };
 
@@ -48,7 +48,7 @@ export type SnapshotData = {
   title: string;
   capturedAt: string;
   fetchXhrRecords: FetchRecord[];
-  networkRecords: LighterceptorNetworkRecord[];
+  networkRecords: CapturedNetworkRecord[];
   resources: Array<{
     url: string;
     localPath: string;

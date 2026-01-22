@@ -1,4 +1,4 @@
-import type { LighterceptorNetworkRecord, NetworkRecord } from "./types";
+import type { CapturedNetworkRecord, NetworkRecord } from "./types";
 
 const getHeaderValue = (headers: Record<string, string>, name: string) => {
   for (const key in headers) {
@@ -69,8 +69,8 @@ export const findFaviconDataUrl = (records: NetworkRecord[]) => {
   return null;
 };
 
-export const mapLighterceptorRecords = (
-  records: LighterceptorNetworkRecord[] | undefined
+export const mapCapturedNetworkRecords = (
+  records: CapturedNetworkRecord[] | undefined
 ): NetworkRecord[] => {
   if (!records) return [];
   return records.map((record) => {

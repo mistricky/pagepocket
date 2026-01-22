@@ -72,7 +72,7 @@ export default class PagepocketCommand extends Command {
       } catch {
         return {
           networkRecords: [],
-          lighterceptorNetworkRecords: [],
+          capturedNetworkRecords: [],
           capturedTitle: undefined,
           title: fetched.title
         };
@@ -94,7 +94,7 @@ export default class PagepocketCommand extends Command {
           title: networkStage.title,
           capturedAt: new Date().toISOString(),
           fetchXhrRecords,
-          networkRecords: networkStage.lighterceptorNetworkRecords,
+          networkRecords: networkStage.capturedNetworkRecords,
           resources: []
         };
         const pagepocket = new PagePocket(fetched.html, seedSnapshot, {
@@ -128,7 +128,7 @@ export default class PagepocketCommand extends Command {
           targetUrl,
           title: networkStage.title,
           fetchXhrRecords,
-          lighterceptorNetworkRecords: networkStage.lighterceptorNetworkRecords,
+          capturedNetworkRecords: networkStage.capturedNetworkRecords,
           resources: resourceMeta
         }),
       "Preparing snapshot HTML"

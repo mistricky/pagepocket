@@ -1,10 +1,10 @@
-import type { LighterceptorNetworkRecord, SnapshotData } from "@pagepocket/lib";
+import type { CapturedNetworkRecord, SnapshotData } from "@pagepocket/lib";
 
 type BuildSnapshotDataInput = {
   targetUrl: string;
   title: string;
   fetchXhrRecords: SnapshotData["fetchXhrRecords"];
-  lighterceptorNetworkRecords: LighterceptorNetworkRecord[];
+  capturedNetworkRecords: CapturedNetworkRecord[];
   resources: SnapshotData["resources"];
 };
 
@@ -14,7 +14,7 @@ export const buildSnapshotData = (input: BuildSnapshotDataInput): SnapshotData =
     title: input.title,
     capturedAt: new Date().toISOString(),
     fetchXhrRecords: input.fetchXhrRecords,
-    networkRecords: input.lighterceptorNetworkRecords,
+    networkRecords: input.capturedNetworkRecords,
     resources: input.resources
   };
 };
