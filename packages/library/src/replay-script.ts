@@ -179,6 +179,7 @@ export const buildReplayScript = (requestsPath: string, baseUrl: string) => {
       if (!item || !item.localPath) continue;
       localResourceSet.add(item.localPath);
       localResourceSet.add("./" + item.localPath);
+      localResourceSet.add("/" + item.localPath);
 
       if (item.url) {
         const variants = expandUrlVariants(item.url);
