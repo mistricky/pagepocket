@@ -1,4 +1,4 @@
-import { Lighterceptor } from "lighterceptor";
+import { Lighterceptor } from "@pagepocket/lighterceptor";
 
 import { mapCapturedNetworkRecords } from "@pagepocket/lib";
 import type { CapturedNetworkRecord, NetworkRecord } from "@pagepocket/lib";

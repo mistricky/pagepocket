@@ -96,7 +96,7 @@ const collectSrcsetUrls = (items: SrcsetReference[], baseUrl: string) => {
 };
 
 export const downloadResources = async (input: DownloadResourcesInput): Promise<DownloadResourcesResult> => {
-  const { write, exists } = await import("uni-fs");
+  const { write, exists } = await import("@pagepocket/uni-fs");
   const resourceMap = new Map<string, DownloadedResource>();
   const resourceMeta: SnapshotData["resources"] = [];
   let downloadedCount = 0;

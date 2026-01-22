@@ -66,10 +66,11 @@ export class PagePocket {
 
   static async fromNetworkIntercetor(
     htmlString: string,
+    url: string,
     interceptorAdapter: NetworkInterceptorAdapter,
     options?: PagePocketOptions
   ) {
-    return new PagePocket(htmlString, await interceptorAdapter.run(), options);
+    return new PagePocket(htmlString, await interceptorAdapter.run(url), options);
   }
 
   async put(): Promise<string> {

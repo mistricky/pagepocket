@@ -10,7 +10,7 @@ type RewriteCssInput = {
 const URL_PATTERN = /url\(\s*(['"]?)([^'")]+)\1\s*\)/g;
 
 export const rewriteCssUrls = async (input: RewriteCssInput): Promise<boolean> => {
-  const { readText, write } = await import("uni-fs");
+  const { readText, write } = await import("@pagepocket/uni-fs");
   const original = await readText(input.filename, input.extension);
   let updated = "";
   let lastIndex = 0;

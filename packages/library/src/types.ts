@@ -58,5 +58,5 @@ export type SnapshotData = {
 };
 
 export interface NetworkInterceptorAdapter {
-  run(): Promise<SnapshotData>;
+  run(url: string): Promise<SnapshotData>;
 }

@@ -19,7 +19,7 @@
   "packageManager": "pnpm@10.25.0",
   "dependencies": {
     "cheerio": "^1.0.0-rc.12",
-    "uni-fs": "workspace:*"
+    "@pagepocket/uni-fs": "workspace:*"
   },
   "devDependencies": {
     "@types/node": "^20.11.30",

@@ -86,7 +86,7 @@ const buildNetworkLookup = (records: NetworkRecord[]) => {
 };
 
 export const rewriteLinks = async (input: RewriteLinksInput): Promise<void> => {
-  const { readAsURL } = await import("uni-fs");
+  const { readAsURL } = await import("@pagepocket/uni-fs");
   const networkRecordByUrl = buildNetworkLookup(input.networkRecords);
   const { baseOrigin, baseDir } = buildLinkBase(input.baseUrl);
   const localUrlCache = new Map<string, string>();
