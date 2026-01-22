@@ -1,7 +1,7 @@
 {
   "name": "@pagepocket/cli",
   "version": "0.4.0",
-  "description": "",
+  "description": "CLI for capturing offline snapshots of web pages.",
   "main": "dist/index.js",
   "scripts": {
     "build": "tsc",

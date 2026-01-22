@@ -1,18 +1,18 @@
-# lighterceptor
+# @pagepocket/lighterceptor
 
-Capture the outbound requests an HTML/JS/CSS payload would trigger in a
-jsdom environment, without hitting the network.
+Capture outbound requests an HTML/JS/CSS payload would trigger in a jsdom
+environment, without hitting the network.
 
 ## Install
 
 ```bash
-pnpm add lighterceptor
+pnpm add @pagepocket/lighterceptor
 ```
 
 ## Quick Start
 
 ```ts
-import { Lighterceptor } from "lighterceptor";
+import { Lighterceptor } from "@pagepocket/lighterceptor";
 
 const html = `
   <!doctype html>
@@ -35,11 +35,11 @@ console.log(result.requests);
 
 ## Recursion (Dependency Graph)
 
-Enable recursion to keep walking JS/CSS/HTML dependencies. This is useful
-when HTML loads CSS/JS, and those assets load more assets.
+Enable recursion to keep walking JS/CSS/HTML dependencies. This is useful when
+HTML loads CSS/JS, and those assets load more assets.
 
 ```ts
-import { Lighterceptor } from "lighterceptor";
+import { Lighterceptor } from "@pagepocket/lighterceptor";
 
 const html = `
   <!doctype html>
@@ -111,18 +111,18 @@ type LighterceptorResult = {
 Use this when you need low-level access to jsdom.
 
 ```ts
-import { createJSDOMWithInterceptor } from "lighterceptor";
+import { createJSDOMWithInterceptor } from "@pagepocket/lighterceptor";
 
 const dom = createJSDOMWithInterceptor({
   html: "<img src='https://example.com/logo.png'>",
   domOptions: {
     pretendToBeVisual: true,
-    runScripts: "dangerously",
+    runScripts: "dangerously"
   },
   interceptor: (url, options) => {
     console.log("Intercepted", url, options.source);
     return "";
-  },
+  }
 });
 ```
 
