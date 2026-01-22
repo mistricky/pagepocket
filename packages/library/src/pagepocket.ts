@@ -3,7 +3,12 @@ import { hackHtml } from "./hack-html";
 import { mapCapturedNetworkRecords, findFaviconDataUrl } from "./network-records";
 import { extractResourceUrls } from "./resources";
 import { rewriteLinks } from "./rewrite-links";
-import type { CapturedNetworkRecord, NetworkRecord, SnapshotData } from "./types";
+import type {
+  CapturedNetworkRecord,
+  NetworkInterceptorAdapter,
+  NetworkRecord,
+  SnapshotData
+} from "./types";
 
 export type PagePocketOptions = {
   assetsDirName?: string;
@@ -57,6 +62,14 @@ export class PagePocket {
     this.htmlString = htmlString;
     this.requestsJSON = requestsJSON;
     this.options = options ?? {};
+  }
+
+  static async fromNetworkIntercetor(
+    htmlString: string,
+    interceptorAdapter: NetworkInterceptorAdapter,
+    options?: PagePocketOptions
+  ) {
+    return new PagePocket(htmlString, await interceptorAdapter.run(), options);
   }
 
   async put(): Promise<string> {

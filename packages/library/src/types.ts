@@ -56,3 +56,7 @@ export type SnapshotData = {
     size?: number;
   }>;
 };
+
+export interface NetworkInterceptorAdapter {
+  run(): Promise<SnapshotData>;
+}
