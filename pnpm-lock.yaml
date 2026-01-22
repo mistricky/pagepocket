@@ -48,6 +48,65 @@ importers:
         specifier: ^4.21.0
         version: 4.21.0
 
+  packages/cli:
+    dependencies:
+      '@oclif/core':
+        specifier: ^4.0.9
+        version: 4.8.0
+      '@pagepocket/lib':
+        specifier: workspace:*
+        version: link:../library
+      chalk:
+        specifier: ^4.1.2
+        version: 4.1.2
+      cheerio:
+        specifier: ^1.0.0-rc.12
+        version: 1.1.2
+      got:
+        specifier: ^11.8.6
+        version: 11.8.6
+      lighterceptor:
+        specifier: workspace:*
+        version: link:../lighterceptor
+      ora:
+        specifier: ^9.0.0
+        version: 9.0.0
+    devDependencies:
+      '@types/node':
+        specifier: ^20.11.30
+        version: 20.19.27
+      prettier:
+        specifier: ^3.7.4
+        version: 3.8.0
+      tsx:
+        specifier: ^4.19.3
+        version: 4.21.0
+      typescript:
+        specifier: ^5.4.5
+        version: 5.9.3
+
+  packages/library:
+    dependencies:
+      cheerio:
+        specifier: ^1.0.0-rc.12
+        version: 1.1.2
+      uni-fs:
+        specifier: workspace:*
+        version: link:../uni-fs
+    devDependencies:
+      '@types/node':
+        specifier: ^20.11.30
+        version: 20.19.27
+      prettier:
+        specifier: ^3.7.4
+        version: 3.8.0
+      tsx:
+        specifier: ^4.19.3
+        version: 4.21.0
+      typescript:
+        specifier: ^5.4.5
+        version: 5.9.3
+
   packages/lighterceptor:
     dependencies:
       intersection-observer-polyfill:
@@ -76,38 +135,16 @@ importers:
         specifier: ^2.1.9
         version: 2.1.9(@types/node@20.19.27)(jsdom@26.1.0)
 
-  packages/pagepocket:
-    dependencies:
-      '@oclif/core':
-        specifier: ^4.0.9
-        version: 4.8.0
-      chalk:
-        specifier: ^4.1.2
-        version: 4.1.2
-      cheerio:
-        specifier: ^1.0.0-rc.12
-        version: 1.1.2
-      got:
-        specifier: ^11.8.6
-        version: 11.8.6
-      lighterceptor:
-        specifier: workspace:*
-        version: link:../lighterceptor
-      ora:
-        specifier: ^9.0.0
-        version: 9.0.0
+  packages/uni-fs:
     devDependencies:
       '@types/node':
-        specifier: ^20.11.30
+        specifier: ^20.17.12
         version: 20.19.27
-      prettier:
-        specifier: ^3.7.4
-        version: 3.8.0
       tsx:
-        specifier: ^4.19.3
+        specifier: ^4.21.0
         version: 4.21.0
       typescript:
-        specifier: ^5.4.5
+        specifier: ^5.7.2
         version: 5.9.3
 
 packages:

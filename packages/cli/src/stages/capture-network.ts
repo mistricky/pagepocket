@@ -1,7 +1,7 @@
 import { Lighterceptor } from "lighterceptor";
 
-import { mapLighterceptorRecords } from "../lib/network-records";
-import type { LighterceptorNetworkRecord, NetworkRecord } from "../lib/types";
+import { mapLighterceptorRecords } from "@pagepocket/lib";
+import type { LighterceptorNetworkRecord, NetworkRecord } from "@pagepocket/lib";
 
 type CaptureNetworkResult = {
   networkRecords: NetworkRecord[];

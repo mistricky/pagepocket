@@ -4,7 +4,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, beforeEach, test } from "node:test";
 
-import { readAsURL, write, delete as deleteFile } from "../src/index.js";
+import { readAsURL, readBinary, readText, write, delete as deleteFile, exists } from "../src/index.js";
 
 type OpfsDirectory = {
   directories: Map<string, OpfsDirectory>;
@@ -168,6 +168,12 @@ test("node: write() persists data and readAsURL() returns a path", async () => {
 
   const url = await readAsURL("snapshots/page", "txt");
   assert.equal(url, "/snapshots/page.txt");
+
+  assert.equal(await exists("snapshots/page", "txt"), true);
+  const text = await readText("snapshots/page", "txt");
+  assert.equal(text, "hello");
+  const binary = await readBinary("snapshots/page", "txt");
+  assert.deepEqual(Array.from(binary), Array.from(new TextEncoder().encode("hello")));
 });
 
 test("node: write() accepts Uint8Array and delete() removes the file", async () => {
@@ -179,6 +185,7 @@ test("node: write() accepts Uint8Array and delete() removes the file", async () 
   await assert.rejects(async () => {
     await access(join(tempDir, "assets", "logo.bin"));
   });
+  assert.equal(await exists("assets/logo", "bin"), false);
 });
 
 test("browser: write/read/delete uses OPFS and returns data URL", async () => {
@@ -189,6 +196,13 @@ test("browser: write/read/delete uses OPFS and returns data URL", async () => {
   const url = await readAsURL("images/logo", "png");
   const expectedBase64 = Buffer.from([137, 80, 78, 71]).toString("base64");
   assert.equal(url, `data:image/png;base64,${expectedBase64}`);
+  assert.equal(await exists("images/logo", "png"), true);
+  const binary = await readBinary("images/logo", "png");
+  assert.deepEqual(Array.from(binary), [137, 80, 78, 71]);
+
+  await write("docs/readme", "txt", "ok");
+  const text = await readText("docs/readme", "txt");
+  assert.equal(text, "ok");
 
   await deleteFile("images/logo", "png");
   await assert.rejects(async () => {
@@ -204,6 +218,11 @@ test("service worker: write/read/delete supports Blob writes", async () => {
   const url = await readAsURL("cache/entry", "txt");
   const expectedBase64 = Buffer.from("ok").toString("base64");
   assert.equal(url, `data:text/plain;base64,${expectedBase64}`);
+  assert.equal(await exists("cache/entry", "txt"), true);
+  const text = await readText("cache/entry", "txt");
+  assert.equal(text, "ok");
+  const binary = await readBinary("cache/entry", "txt");
+  assert.deepEqual(Array.from(binary), Array.from(new TextEncoder().encode("ok")));
 
   await deleteFile("cache/entry", "txt");
   await assert.rejects(async () => {

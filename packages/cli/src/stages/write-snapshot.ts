@@ -1,6 +1,6 @@
 import fs from "node:fs/promises";
 
-import type { SnapshotData } from "../lib/types";
+import type { SnapshotData } from "@pagepocket/lib";
 
 type WriteSnapshotInput = {
   outputRequestsPath: string;

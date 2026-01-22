@@ -1,5 +1,5 @@
-import { preloadHackers } from "./lib/hackers";
-import type { HackerContext } from "./lib/hackers/types";
+import { preloadHackers } from "./hackers";
+import type { HackerContext } from "./hackers/types";
 
 export const buildPreloadScript = () => {
   const context: HackerContext = { stage: "preload" };

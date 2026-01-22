@@ -149,6 +149,88 @@ function getNodeCwd(): string {
   return nodeProcess.cwd();
 }
 
+export async function exists(filename: string, extension: string): Promise<boolean> {
+  const fileName = buildFileName(filename, extension);
+
+  if (isOpfsAvailable()) {
+    try {
+      const root = await getOpfsRoot();
+      const { directories, basename } = splitPath(fileName);
+      const directory = await getOpfsDirectory(root, directories, {
+        create: false
+      });
+      await directory.getFileHandle(basename, { create: false });
+      return true;
+    } catch {
+      return false;
+    }
+  }
+
+  if (isNodeEnvironment()) {
+    const { join } = await import("node:path");
+    const { access } = await import("node:fs/promises");
+    const outputPath = join(getNodeCwd(), fileName);
+    try {
+      await access(outputPath);
+      return true;
+    } catch {
+      return false;
+    }
+  }
+
+  throw new Error(OPFS_ERROR_MESSAGE);
+}
+
+export async function readBinary(filename: string, extension: string): Promise<Uint8Array> {
+  const fileName = buildFileName(filename, extension);
+
+  if (isOpfsAvailable()) {
+    const root = await getOpfsRoot();
+    const { directories, basename } = splitPath(fileName);
+    const directory = await getOpfsDirectory(root, directories, {
+      create: false
+    });
+    const fileHandle = await directory.getFileHandle(basename);
+    const file = await fileHandle.getFile();
+    const buffer = await file.arrayBuffer();
+    return new Uint8Array(buffer);
+  }
+
+  if (isNodeEnvironment()) {
+    const { join } = await import("node:path");
+    const { readFile } = await import("node:fs/promises");
+    const outputPath = join(getNodeCwd(), fileName);
+    const buffer = await readFile(outputPath);
+    return new Uint8Array(buffer);
+  }
+
+  throw new Error(OPFS_ERROR_MESSAGE);
+}
+
+export async function readText(filename: string, extension: string): Promise<string> {
+  const fileName = buildFileName(filename, extension);
+
+  if (isOpfsAvailable()) {
+    const root = await getOpfsRoot();
+    const { directories, basename } = splitPath(fileName);
+    const directory = await getOpfsDirectory(root, directories, {
+      create: false
+    });
+    const fileHandle = await directory.getFileHandle(basename);
+    const file = await fileHandle.getFile();
+    return file.text();
+  }
+
+  if (isNodeEnvironment()) {
+    const { join } = await import("node:path");
+    const { readFile } = await import("node:fs/promises");
+    const outputPath = join(getNodeCwd(), fileName);
+    return readFile(outputPath, "utf-8");
+  }
+
+  throw new Error(OPFS_ERROR_MESSAGE);
+}
+
 export async function readAsURL(filename: string, extension: string): Promise<string> {
   const fileName = buildFileName(filename, extension);
 

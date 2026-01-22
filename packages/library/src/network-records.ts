@@ -9,6 +9,23 @@ const getHeaderValue = (headers: Record<string, string>, name: string) => {
   return undefined;
 };
 
+const toBase64 = (value: string) => {
+  const bufferConstructor = (
+    globalThis as {
+      Buffer?: {
+        from(data: string, encoding?: string): { toString(encoding: string): string };
+      };
+    }
+  ).Buffer;
+  if (bufferConstructor) {
+    return bufferConstructor.from(value, "utf-8").toString("base64");
+  }
+  if (typeof btoa === "function") {
+    return btoa(value);
+  }
+  return "";
+};
+
 export const toDataUrlFromRecord = (record: NetworkRecord) => {
   if (!record) return null;
   const headers = record.responseHeaders || {};
@@ -19,7 +36,11 @@ export const toDataUrlFromRecord = (record: NetworkRecord) => {
   }
 
   if (record.responseBody) {
-    return `data:${contentType};base64,${Buffer.from(record.responseBody, "utf-8").toString("base64")}`;
+    const encoded = toBase64(record.responseBody);
+    if (!encoded) {
+      return null;
+    }
+    return `data:${contentType};base64,${encoded}`;
   }
 
   return null;

@@ -1,4 +1,4 @@
-import type { LighterceptorNetworkRecord, SnapshotData } from "../lib/types";
+import type { LighterceptorNetworkRecord, SnapshotData } from "@pagepocket/lib";
 
 type BuildSnapshotDataInput = {
   targetUrl: string;

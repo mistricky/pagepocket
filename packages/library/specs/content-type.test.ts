@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { describe, test } from "node:test";
 
-import { extensionFromContentType, isTextResponse } from "../src/lib/content-type";
+import { extensionFromContentType, isTextResponse } from "../src/content-type";
 
 describe("content-type helpers", () => {
   test("maps common content types to extensions", () => {

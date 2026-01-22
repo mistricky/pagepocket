@@ -1,7 +1,7 @@
 import assert from "node:assert";
 import { describe, test } from "node:test";
 
-import { buildReplayScript } from "../src/lib/replay-script";
+import { buildReplayScript } from "../src/replay-script";
 
 const baseUrl = "https://transformer-circuits.pub/2025/attribution-graphs/biology.html";
 const script = buildReplayScript("On_the_Biology_of_a_Large_Language_Model.requests.json", baseUrl);

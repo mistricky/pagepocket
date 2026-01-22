@@ -1,16 +1,15 @@
+import path from "node:path";
+
 import { Args, Command, Flags } from "@oclif/core";
 import chalk from "chalk";
 import ora from "ora";
 
-import { findFaviconDataUrl } from "./lib/network-records";
-import type { LighterceptorNetworkRecord, NetworkRecord, SnapshotData } from "./lib/types";
-import { buildSnapshotHtml } from "./stages/build-snapshot";
+import { PagePocket } from "@pagepocket/lib";
+import type { LighterceptorNetworkRecord, NetworkRecord, SnapshotData } from "@pagepocket/lib";
 import { buildSnapshotData } from "./stages/build-snapshot-data";
 import { captureNetwork } from "./stages/capture-network";
-import { downloadResources } from "./stages/download-resources";
 import { fetchHtml } from "./stages/fetch-html";
 import { prepareOutputPaths } from "./stages/prepare-output";
-import { rewriteLinkHrefs } from "./stages/rewrite-links";
 import { writeSnapshotFiles } from "./stages/write-snapshot";
 
 export default class PagepocketCommand extends Command {
@@ -86,8 +85,6 @@ export default class PagepocketCommand extends Command {
       networkSpinner.fail("Failed to capture network requests");
     }
 
-    const faviconDataUrl = findFaviconDataUrl(networkRecords);
-
     const outputSpinner = ora("Preparing output paths").start();
     let outputPaths: Awaited<ReturnType<typeof prepareOutputPaths>>;
     try {
@@ -99,22 +96,34 @@ export default class PagepocketCommand extends Command {
     }
 
     const downloadSpinner = ora("Downloading resources").start();
-    let $: ReturnType<typeof import("cheerio").load>;
     let resourceMeta: SnapshotData["resources"] = [];
     let downloadedCount = 0;
     let failedCount = 0;
+    let snapshotHtml = "";
+    const originalCwd = process.cwd();
+    const shouldRestoreCwd = outputPaths.baseDir !== originalCwd;
     try {
-      const result = await downloadResources({
-        html,
-        targetUrl,
-        networkRecords,
-        resourcesDir: outputPaths.resourcesDir,
-        assetsDirName: outputPaths.assetsDirName
+      if (shouldRestoreCwd) {
+        process.chdir(outputPaths.baseDir);
+      }
+      const seedSnapshot: SnapshotData = {
+        url: targetUrl,
+        title,
+        capturedAt: new Date().toISOString(),
+        fetchXhrRecords,
+        networkRecords: lighterceptorNetworkRecords,
+        resources: []
+      };
+      const pagepocket = new PagePocket(html, seedSnapshot, {
+        assetsDirName: outputPaths.assetsDirName,
+        baseUrl: targetUrl,
+        requestsPath: path.basename(outputPaths.outputRequestsPath)
       });
-      $ = result.$;
-      resourceMeta = result.resourceMeta;
-      downloadedCount = result.downloadedCount;
-      failedCount = result.failedCount;
+      snapshotHtml = await pagepocket.put();
+      resourceMeta = pagepocket.resources;
+      downloadedCount = pagepocket.downloadedCount;
+      failedCount = pagepocket.failedCount;
+
       const downloadSummary =
         failedCount > 0
           ? `Resources downloaded (${downloadedCount} saved, ${failedCount} failed)`
@@ -123,25 +132,18 @@ export default class PagepocketCommand extends Command {
     } catch (error) {
       downloadSpinner.fail("Failed to download resources");
       throw error;
-    }
-
-    const rewriteSpinner = ora("Rewriting HTML links").start();
-    try {
-      rewriteLinkHrefs({
-        $,
-        targetUrl,
-        assetsDirName: outputPaths.assetsDirName,
-        networkRecords
-      });
-      rewriteSpinner.succeed("Rewrote HTML links");
-    } catch (error) {
-      rewriteSpinner.fail("Failed to rewrite HTML links");
-      throw error;
+    } finally {
+      if (shouldRestoreCwd) {
+        try {
+          process.chdir(originalCwd);
+        } catch {
+          // Ignore restore errors to preserve original failure.
+        }
+      }
     }
 
     const prepareSpinner = ora("Preparing snapshot HTML").start();
     let snapshotData: SnapshotData | null = null;
-    let snapshotHtml = "";
     try {
       snapshotData = buildSnapshotData({
         targetUrl,
@@ -149,13 +151,6 @@ export default class PagepocketCommand extends Command {
         fetchXhrRecords,
         lighterceptorNetworkRecords,
         resources: resourceMeta
-      });
-
-      snapshotHtml = buildSnapshotHtml({
-        $,
-        targetUrl,
-        outputRequestsPath: outputPaths.outputRequestsPath,
-        faviconDataUrl
       });
       prepareSpinner.succeed("Prepared snapshot HTML");
     } catch (error) {
