@@ -1,5 +1,5 @@
 {
-  "name": "pagepocket",
+  "name": "@pagepocket/cli",
   "version": "0.3.1",
   "description": "",
   "main": "dist/index.js",
