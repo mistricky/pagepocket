@@ -1,4 +1,3 @@
-
 <p align="center">
 
 <img src="/doc/logo.png" width="500" alt="Neovim" />

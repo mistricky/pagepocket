@@ -3,7 +3,7 @@ name: Auto Release with Changelog
 on:
   push:
     tags:
-      - 'v*.*.*'  # Matches v1.0.0, v2.1.3, etc.
+      - "v*.*.*" # Matches v1.0.0, v2.1.3, etc.
 
 permissions:
   contents: write
@@ -17,18 +17,18 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
         with:
-          fetch-depth: 0  # Fetch full history for git analysis
+          fetch-depth: 0 # Fetch full history for git analysis
 
       - name: Generate Changelog
         id: changelog
         uses: ./
         with:
-          api_base_url: ${{ secrets.API_BASE_URL }} 
-          model: ${{ secrets.MODEL }} 
-          small_fast_model: ${{ secrets.SMALL_FAST_MODEL }} 
+          api_base_url: ${{ secrets.API_BASE_URL }}
+          model: ${{ secrets.MODEL }}
+          small_fast_model: ${{ secrets.SMALL_FAST_MODEL }}
           github_token: ${{ secrets.GITHUB_TOKEN }}
           anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
-          format: 'markdown'
+          format: "markdown"
 
       - name: Extract version from tag
         id: version
