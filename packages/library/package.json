@@ -1,6 +1,6 @@
 {
   "name": "@pagepocket/lib",
-  "version": "0.4.1",
+  "version": "0.4.2",
   "description": "Library for rewriting HTML snapshots and inlining local resources.",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
