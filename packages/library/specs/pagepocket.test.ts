@@ -56,7 +56,7 @@ test("PagePocket.put parses request JSON strings and returns rewritten HTML", as
 
     const output = await pagepocket.put();
 
-    assert.ok(output.includes("/assets/"));
+    assert.ok(output.content.includes("/assets/"));
     assert.equal(pagepocket.resources.length, 1);
     assert.equal(pagepocket.downloadedCount, 1);
     assert.equal(pagepocket.failedCount, 0);
