@@ -4,8 +4,9 @@ import os from "node:os";
 import path from "node:path";
 import { describe, test } from "node:test";
 
-import { rewriteCssUrls } from "../src/css-rewrite";
 import { write } from "uni-fs";
+
+import { rewriteCssUrls } from "../src/css-rewrite";
 
 describe("css-rewrite", () => {
   test("rewrites css url() values using uni-fs", async () => {

@@ -1,10 +1,10 @@
 import type { CheerioAPI } from "cheerio";
 
 import { rewriteCssUrls } from "./css-rewrite";
+import type { DownloadedResource } from "./download-resources";
 import { toDataUrlFromRecord } from "./network-records";
 import { toAbsoluteUrl, type ResourceReference, type SrcsetReference } from "./resources";
 import type { NetworkRecord } from "./types";
-import type { DownloadedResource } from "./download-resources";
 
 type RewriteLinksInput = {
   $: CheerioAPI;

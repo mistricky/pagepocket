@@ -4,7 +4,14 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, beforeEach, test } from "node:test";
 
-import { readAsURL, readBinary, readText, write, delete as deleteFile, exists } from "../src/index.js";
+import {
+  readAsURL,
+  readBinary,
+  readText,
+  write,
+  delete as deleteFile,
+  exists
+} from "../src/index.js";
 
 type OpfsDirectory = {
   directories: Map<string, OpfsDirectory>;

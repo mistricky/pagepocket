@@ -2,10 +2,9 @@ import path from "node:path";
 
 import { Args, Command, Flags } from "@oclif/core";
 import { PagePocket, type SnapshotData } from "@pagepocket/lib";
+import { LighterceptorAdapter } from "@pagepocket/lighterceptor-adapter";
 import chalk from "chalk";
 
-import { buildSnapshotData } from "./stages/build-snapshot-data";
-import { captureNetwork } from "./stages/capture-network";
 import { fetchHtml } from "./stages/fetch-html";
 import { prepareOutputPaths } from "./stages/prepare-output";
 import { writeSnapshotFiles } from "./stages/write-snapshot";
@@ -56,32 +55,16 @@ export default class PagepocketCommand extends Command {
         throw new Error("Invalid PAGEPOCKET_FETCH_HEADERS JSON.");
       }
     })();
-    const fetchXhrRecords: SnapshotData["fetchXhrRecords"] = [];
-
     const fetched = await withSpinner(
       async () => fetchHtml(targetUrl, fetchTimeoutMs, headersOverride),
       "Fetching the target HTML"
     );
 
-    const networkStage = await (async () => {
-      try {
-        return withSpinner(
-          () => captureNetwork(targetUrl, fetched.title),
-          "Capturing network requests with lighterceptor"
-        );
-      } catch {
-        return {
-          networkRecords: [],
-          capturedNetworkRecords: [],
-          capturedTitle: undefined,
-          title: fetched.title
-        };
-      }
-    })();
-
-    const { outputPaths, resourceMeta, snapshotHtml } = await withSpinner(async () => {
+    const { outputPaths, snapshotData, snapshotHtml } = await withSpinner(async () => {
       const originalCwd = process.cwd();
-      const outputPaths = await prepareOutputPaths(networkStage.title, outputFlag);
+      const interceptor = new LighterceptorAdapter({ title: fetched.title });
+      const snapshotSeed = await interceptor.run(targetUrl);
+      const outputPaths = await prepareOutputPaths(snapshotSeed.title, outputFlag);
       const shouldRestoreCwd = outputPaths.baseDir !== originalCwd;
 
       try {
@@ -89,27 +72,23 @@ export default class PagepocketCommand extends Command {
           process.chdir(outputPaths.baseDir);
         }
 
-        const seedSnapshot: SnapshotData = {
-          url: targetUrl,
-          title: networkStage.title,
-          capturedAt: new Date().toISOString(),
-          fetchXhrRecords,
-          networkRecords: networkStage.capturedNetworkRecords,
-          resources: []
-        };
-        const pagepocket = new PagePocket(fetched.html, seedSnapshot, {
-          assetsDirName: outputPaths.assetsDirName,
+        const pagepocket = new PagePocket(fetched.html, snapshotSeed, {
           baseUrl: targetUrl,
+          assetsDirName: outputPaths.assetsDirName,
           requestsPath: path.basename(outputPaths.outputRequestsPath)
         });
-        const snapshotHtml = await pagepocket.put();
+        const pageData = await pagepocket.put();
+
+        const snapshotData: SnapshotData = {
+          ...snapshotSeed,
+          title: pageData.title,
+          resources: pagepocket.resources
+        };
 
         return {
-          snapshotHtml,
-          resourceMeta: pagepocket.resources,
-          downloadedCount: pagepocket.downloadedCount,
-          failedCount: pagepocket.failedCount,
-          outputPaths
+          outputPaths,
+          snapshotData,
+          snapshotHtml: pageData.content
         };
       } finally {
         if (shouldRestoreCwd) {
@@ -121,18 +100,6 @@ export default class PagepocketCommand extends Command {
         }
       }
     }, "Downloading resources");
-
-    const snapshotData = await withSpinner(
-      async () =>
-        buildSnapshotData({
-          targetUrl,
-          title: networkStage.title,
-          fetchXhrRecords,
-          capturedNetworkRecords: networkStage.capturedNetworkRecords,
-          resources: resourceMeta
-        }),
-      "Preparing snapshot HTML"
-    );
 
     await withSpinner(async () => {
       await writeSnapshotFiles({

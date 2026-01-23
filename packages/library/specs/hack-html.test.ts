@@ -19,5 +19,5 @@ test("hackHtml injects preload/replay scripts and favicon", () => {
   assert.ok(headHtml.includes("__pagepocketPatched"));
   assert.ok(headHtml.includes("hacker:replay-fetch-responder"));
   assert.ok(headHtml.includes("snapshot.requests.json"));
-  assert.ok($("link[rel=\"icon\"]").attr("href") === "data:image/png;base64,abc");
+  assert.ok($('link[rel="icon"]').attr("href") === "data:image/png;base64,abc");
 });

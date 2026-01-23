@@ -16,6 +16,11 @@ export type PagePocketOptions = {
   requestsPath?: string;
 };
 
+interface PageContent extends PagePocketOptions {
+  content: string;
+  title: string;
+}
+
 type RequestsInput = SnapshotData | string;
 
 type ParsedRequests = {
@@ -73,7 +78,7 @@ export class PagePocket {
     return new PagePocket(htmlString, await interceptorAdapter.run(url), options);
   }
 
-  async put(): Promise<string> {
+  async put(): Promise<PageContent> {
     const { snapshot, networkRecords } = parseRequestsJson(this.requestsJSON);
     const safeTitle = safeFilename(snapshot.title || "snapshot");
     const assetsDirName = this.options.assetsDirName ?? `${safeTitle}_files`;
@@ -111,6 +116,12 @@ export class PagePocket {
       faviconDataUrl
     });
 
-    return $.html();
+    return {
+      content: $.html(),
+      title: safeTitle,
+      assetsDirName,
+      requestsPath,
+      baseUrl
+    };
   }
 }

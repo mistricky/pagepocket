@@ -9,4 +9,8 @@ export type {
 } from "./types";
 export { buildReplayScript } from "./replay-script";
 export { buildPreloadScript } from "./preload";
-export { findFaviconDataUrl, mapCapturedNetworkRecords, toDataUrlFromRecord } from "./network-records";
+export {
+  findFaviconDataUrl,
+  mapCapturedNetworkRecords,
+  toDataUrlFromRecord
+} from "./network-records";

@@ -4,11 +4,12 @@ import os from "node:os";
 import path from "node:path";
 import { afterEach, beforeEach, test } from "node:test";
 
-import { rewriteLinks } from "../src/rewrite-links";
-import { extractResourceUrls } from "../src/resources";
-import type { DownloadedResource } from "../src/download-resources";
-import type { NetworkRecord } from "../src/types";
 import { write } from "uni-fs";
+
+import type { DownloadedResource } from "../src/download-resources";
+import { extractResourceUrls } from "../src/resources";
+import { rewriteLinks } from "../src/rewrite-links";
+import type { NetworkRecord } from "../src/types";
 
 let originalCwd = "";
 let tempDir = "";
@@ -123,14 +124,11 @@ test("rewriteLinks replaces HTML/CSS/module imports with local URLs", async () =
   });
 
   assert.equal($("img#hero").attr("src"), "/snap_files/hero.png");
-  assert.equal(
-    $("img#hero").attr("srcset"),
-    "/snap_files/hero.png 1x, /snap_files/hero@2x.png 2x"
-  );
+  assert.equal($("img#hero").attr("srcset"), "/snap_files/hero.png 1x, /snap_files/hero@2x.png 2x");
   assert.equal($("img#missing").attr("src"), "/missing.png");
   assert.equal($("link[rel=stylesheet]").attr("href"), "/snap_files/styles.css");
 
-  const scriptHtml = $("script[type=\"module\"]").html() || "";
+  const scriptHtml = $('script[type="module"]').html() || "";
   assert.ok(scriptHtml.includes("/snap_files/app.js"));
 
   const cssContents = await fs.readFile(path.join(tempDir, "snap_files", "styles.css"), "utf-8");

@@ -95,7 +95,9 @@ const collectSrcsetUrls = (items: SrcsetReference[], baseUrl: string) => {
   return urls;
 };
 
-export const downloadResources = async (input: DownloadResourcesInput): Promise<DownloadResourcesResult> => {
+export const downloadResources = async (
+  input: DownloadResourcesInput
+): Promise<DownloadResourcesResult> => {
   const { write, exists } = await import("@pagepocket/uni-fs");
   const resourceMap = new Map<string, DownloadedResource>();
   const resourceMeta: SnapshotData["resources"] = [];
@@ -103,10 +105,7 @@ export const downloadResources = async (input: DownloadResourcesInput): Promise<
   let failedCount = 0;
 
   const srcsetUrls = collectSrcsetUrls(input.srcsetItems, input.baseUrl);
-  const candidateUrls = [
-    ...input.resourceUrls.map((resource) => resource.url),
-    ...srcsetUrls
-  ];
+  const candidateUrls = [...input.resourceUrls.map((resource) => resource.url), ...srcsetUrls];
 
   for (const candidate of candidateUrls) {
     if (shouldSkipUrl(candidate)) {
