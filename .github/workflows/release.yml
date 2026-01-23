@@ -21,7 +21,7 @@ jobs:
 
       - name: Generate Changelog
         id: changelog
-        uses: ./
+        uses: mistricky/ccc@v0.2.3
         with:
           api_base_url: ${{ secrets.API_BASE_URL }}
           model: ${{ secrets.MODEL }}
