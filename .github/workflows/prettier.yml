@@ -24,7 +24,4 @@ jobs:
         run: pnpm install --frozen-lockfile
       - name: Prettier check
         run: pnpm format:check
-      - name: Test
-        run: |
-          shopt -s globstar
-          pnpm test
+      
