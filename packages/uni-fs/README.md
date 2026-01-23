@@ -11,7 +11,14 @@ pnpm add @pagepocket/uni-fs
 ## API
 
 ```ts
-import { write, readAsURL, readText, readBinary, exists, delete as deleteFile } from "@pagepocket/uni-fs";
+import {
+  write,
+  readAsURL,
+  readText,
+  readBinary,
+  exists,
+  delete as deleteFile
+} from "@pagepocket/uni-fs";
 
 await write("snapshots/page", "html", "<html>...</html>");
 const url = await readAsURL("snapshots/page", "html");

@@ -5,8 +5,6 @@
   "main": "dist/index.js",
   "scripts": {
     "build": "tsc",
-    "format": "prettier --write .",
-    "format:check": "prettier --check .",
     "start": "node dist/index.js",
     "test": "tsx --test specs/**/*.test.ts"
   },
@@ -32,7 +30,6 @@
   },
   "devDependencies": {
     "@types/node": "^20.11.30",
-    "prettier": "^3.7.4",
     "tsx": "^4.19.3",
     "typescript": "^5.4.5"
   },
