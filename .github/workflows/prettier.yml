@@ -25,4 +25,5 @@ jobs:
       - name: Prettier check
         run: pnpm format:check
       - name: Test
+        shell: zsh
         run: pnpm test
