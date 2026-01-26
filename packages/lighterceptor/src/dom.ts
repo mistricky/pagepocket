@@ -180,8 +180,47 @@ export function createJSDOMWithInterceptor(options: InterceptorOptions) {
           CanvasRenderingContext2DStub as typeof CanvasRenderingContext2D;
       }
 
-      window.scrollBy = () => {};
-      window.scrollTo = () => {};
+      const scrollState = { x: 0, y: 0 };
+      const applyScroll = (x: number, y: number) => {
+        scrollState.x = Number.isFinite(x) ? x : scrollState.x;
+        scrollState.y = Number.isFinite(y) ? y : scrollState.y;
+        (window as unknown as { pageXOffset: number }).pageXOffset = scrollState.x;
+        (window as unknown as { pageYOffset: number }).pageYOffset = scrollState.y;
+        if (window.document.documentElement) {
+          window.document.documentElement.scrollLeft = scrollState.x;
+          window.document.documentElement.scrollTop = scrollState.y;
+        }
+        if (window.document.body) {
+          window.document.body.scrollLeft = scrollState.x;
+          window.document.body.scrollTop = scrollState.y;
+        }
+        window.dispatchEvent(new window.Event("scroll"));
+      };
+
+      const scrollByImpl: typeof window.scrollBy = (
+        left?: number | ScrollToOptions,
+        top?: number
+      ) => {
+        if (typeof left === "object" && left !== null) {
+          const { left: targetLeft, top: targetTop } = left;
+          applyScroll(scrollState.x + (targetLeft ?? 0), scrollState.y + (targetTop ?? 0));
+          return;
+        }
+        applyScroll(scrollState.x + (left ?? 0), scrollState.y + (top ?? 0));
+      };
+      const scrollToImpl: typeof window.scrollTo = (
+        left?: number | ScrollToOptions,
+        top?: number
+      ) => {
+        if (typeof left === "object" && left !== null) {
+          const { left: targetLeft, top: targetTop } = left;
+          applyScroll(targetLeft ?? scrollState.x, targetTop ?? scrollState.y);
+          return;
+        }
+        applyScroll((left as number | undefined) ?? scrollState.x, top ?? scrollState.y);
+      };
+      window.scrollBy = scrollByImpl;
+      window.scrollTo = scrollToImpl;
 
       if (window.HTMLCanvasElement?.prototype) {
         const canvasProto = window.HTMLCanvasElement.prototype;
@@ -605,6 +644,7 @@ export function createJSDOMWithInterceptor(options: InterceptorOptions) {
 
   scanDocumentRequests(dom.window, options.interceptor);
   triggerHoverSweep(dom.window);
+  triggerScrollSweep(dom.window);
 
   return dom;
 }
@@ -616,6 +656,33 @@ function triggerHoverSweep(window: DOMWindow) {
       element.dispatchEvent(new window.Event("mouseover", eventInit));
       element.dispatchEvent(new window.Event("mouseenter", eventInit));
     });
+  };
+
+  if (window.document.readyState === "complete") {
+    fire();
+    return;
+  }
+
+  window.addEventListener("load", fire, { once: true });
+  window.setTimeout(fire, 0);
+}
+
+function triggerScrollSweep(window: DOMWindow) {
+  const fire = () => {
+    const documentElement = window.document.documentElement;
+    const body = window.document.body;
+    const scrollHeight = Math.max(documentElement?.scrollHeight ?? 0, body?.scrollHeight ?? 0);
+    const viewportHeight = window.innerHeight ?? 0;
+    const targetY = Math.max(0, scrollHeight - viewportHeight);
+    const steps = Math.max(1, Math.min(8, Math.ceil(targetY / 800)));
+
+    window.scrollTo(0, 0);
+    for (let step = 1; step <= steps; step += 1) {
+      const y = Math.round((targetY * step) / steps);
+      window.setTimeout(() => {
+        window.scrollTo(0, y);
+      }, step * 25);
+    }
   };
 
   if (window.document.readyState === "complete") {
