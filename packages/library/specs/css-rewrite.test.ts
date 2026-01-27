@@ -1,53 +1,38 @@
 import assert from "node:assert/strict";
-import fs from "node:fs/promises";
-import os from "node:os";
-import path from "node:path";
 import { describe, test } from "node:test";
 
-import { write } from "uni-fs";
+import { rewriteCssText } from "../src/css-rewrite";
 
-import { rewriteCssUrls } from "../src/css-rewrite";
+describe("rewriteCssText", () => {
+  test("rewrites url() and @import values to snapshot paths", async () => {
+    const cssUrl = "https://example.com/styles.css";
+    const original = `
+      body { background: url("/asset.png"); }
+      .logo { background: url('https://example.com/logo.png'); }
+      @import url("/import.css");
+      .skip { background: url("data:image/png;base64,abc"); }
+    `;
 
-describe("css-rewrite", () => {
-  test("rewrites css url() values using uni-fs", async () => {
-    const originalCwd = process.cwd();
-    const tempDir = await fs.mkdtemp(path.join(os.tmpdir(), "pagepocket-css-"));
-    process.chdir(tempDir);
-
-    try {
-      const cssUrl = "https://example.com/styles.css";
-      await write(
-        "assets/styles",
-        "css",
-        `
-        body { background: url("/asset.png"); }
-        .logo { background: url('https://example.com/logo.png'); }
-        .skip { background: url("data:image/png;base64,abc"); }
-        `
-      );
-
-      await rewriteCssUrls({
-        filename: "assets/styles",
-        extension: "css",
-        cssUrl,
-        resolveUrl: async (absoluteUrl) => {
-          if (absoluteUrl === "https://example.com/asset.png") {
-            return "/assets/asset.png";
-          }
-          if (absoluteUrl === "https://example.com/logo.png") {
-            return "/assets/logo.png";
-          }
-          return null;
+    const rewritten = await rewriteCssText({
+      cssText: original,
+      cssUrl,
+      resolveUrl: async (absoluteUrl) => {
+        if (absoluteUrl === "https://example.com/asset.png") {
+          return "/assets/asset.png";
         }
-      });
+        if (absoluteUrl === "https://example.com/logo.png") {
+          return "/assets/logo.png";
+        }
+        if (absoluteUrl === "https://example.com/import.css") {
+          return "/assets/import.css";
+        }
+        return null;
+      }
+    });
 
-      const updated = await fs.readFile(path.join(tempDir, "assets", "styles.css"), "utf-8");
-      assert.ok(updated.includes("/assets/asset.png"));
-      assert.ok(updated.includes("/assets/logo.png"));
-      assert.ok(updated.includes("data:image/png;base64,abc"));
-    } finally {
-      process.chdir(originalCwd);
-      await fs.rm(tempDir, { recursive: true, force: true });
-    }
+    assert.ok(rewritten.includes("/assets/asset.png"));
+    assert.ok(rewritten.includes("/assets/logo.png"));
+    assert.ok(rewritten.includes("/assets/import.css"));
+    assert.ok(rewritten.includes("data:image/png;base64,abc"));
   });
 });

@@ -11,13 +11,13 @@ test("hackHtml injects preload/replay scripts and favicon", () => {
   hackHtml({
     $,
     baseUrl: "https://example.com",
-    requestsPath: "snapshot.requests.json",
+    apiPath: "/api.json",
     faviconDataUrl: "data:image/png;base64,abc"
   });
 
   const headHtml = $("head").html() || "";
   assert.ok(headHtml.includes("__pagepocketPatched"));
   assert.ok(headHtml.includes("hacker:replay-fetch-responder"));
-  assert.ok(headHtml.includes("snapshot.requests.json"));
+  assert.ok(headHtml.includes("/api.json"));
   assert.ok($('link[rel="icon"]').attr("href") === "data:image/png;base64,abc");
 });

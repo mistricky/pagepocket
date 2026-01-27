@@ -1,8 +1,8 @@
 # @pagepocket/lib
 
-Library for rewriting captured HTML into an offline-ready snapshot. It downloads
-assets, rewrites HTML/CSS/JS references to local URLs, and injects replay/preload
-scripts.
+Core library for capturing a page via NetworkInterceptorAdapter events and
+producing a virtual snapshot (HTML/CSS/JS rewritten to absolute snapshot paths).
+No network fetch happens in the core library.
 
 ## Install
 
@@ -14,32 +14,72 @@ pnpm add @pagepocket/lib
 
 ```ts
 import { PagePocket } from "@pagepocket/lib";
+import { SomeInterceptorAdapter } from "@pagepocket/adapters";
 
-const pagepocket = new PagePocket(htmlString, requestsJSON, {
-  assetsDirName: "example_files",
-  baseUrl: "https://example.com",
-  requestsPath: "example.requests.json"
+const interceptor = new SomeInterceptorAdapter();
+const snapshot = await PagePocket.fromURL("https://example.com").capture({
+  interceptor
 });
 
-const html = await pagepocket.put();
+await snapshot.toDirectory("./out");
 ```
 
 ## API
 
 ```ts
-type PagePocketOptions = {
-  assetsDirName?: string;
-  baseUrl?: string;
-  requestsPath?: string;
-};
+class PagePocket {
+  static fromURL(url: string, options?: PagePocketOptions): PagePocket;
+  static fromTarget(target: InterceptTarget, options?: PagePocketOptions): PagePocket;
+  capture(options?: CaptureOptions): Promise<PageSnapshot>;
+}
 ```
 
-- `assetsDirName`: folder name for downloaded assets.
-- `baseUrl`: used to resolve relative URLs.
-- `requestsPath`: path to the `*.requests.json` file referenced by replay.
+### CaptureOptions (core)
 
-`put()` returns the rewritten HTML string.
+```ts
+interface CaptureOptions {
+  interceptor: NetworkInterceptorAdapter;
+  completion?: CompletionStrategy | CompletionStrategy[];
+  filter?: ResourceFilter;
+  pathResolver?: PathResolver;
+  contentStore?: ContentStore;
+  rewriteEntry?: boolean;
+  rewriteCSS?: boolean;
+  limits?: {
+    maxTotalBytes?: number;
+    maxSingleResourceBytes?: number;
+    maxResources?: number;
+  };
+}
+```
+
+### PageSnapshot output
+
+```ts
+interface PageSnapshot {
+  version: "1.0";
+  createdAt: number;
+  url: string;
+  entry: string;
+  files: SnapshotFile[];
+  toDirectory(outDir: string): Promise<WriteResult>;
+  toZip(options?: ZipOptions): Promise<Uint8Array | Blob>;
+}
+```
+
+Snapshot layout:
+
+```
+/index.html
+/api.json
+/<same-origin paths>
+/external_resources/<cross-origin paths>
+```
+
+If multiple documents are captured, each document is written to its own output
+directory based on the document URL path (e.g. `foo/bar/index.html`).
 
 ## Notes
 
 - Uses `@pagepocket/uni-fs` for file IO so it works in Node and OPFS contexts.
+- Network data comes only from the interceptor events.

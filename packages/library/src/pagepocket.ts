@@ -1,127 +1,132 @@
-import { downloadResources, type DownloadedResource } from "./download-resources";
-import { hackHtml } from "./hack-html";
-import { mapCapturedNetworkRecords, findFaviconDataUrl } from "./network-records";
-import { extractResourceUrls } from "./resources";
-import { rewriteLinks } from "./rewrite-links";
+import { HybridContentStore } from "./content-store";
+import { networkIdle, normalizeCompletion, timeout } from "./completion";
+import { createDefaultPathResolver } from "./path-resolver";
+import { createDefaultResourceFilter } from "./resource-filter";
+import { buildSnapshot } from "./snapshot-builder";
 import type {
-  CapturedNetworkRecord,
-  NetworkInterceptorAdapter,
-  NetworkRecord,
-  SnapshotData
+  CaptureOptions,
+  InterceptTarget,
+  NetworkEvent,
+  PagePocketOptions,
+  PageSnapshot
 } from "./types";
-
-export type PagePocketOptions = {
-  assetsDirName?: string;
-  baseUrl?: string;
-  requestsPath?: string;
-};
-
-interface PageContent extends PagePocketOptions {
-  content: string;
-  title: string;
-}
-
-type RequestsInput = SnapshotData | string;
-
-type ParsedRequests = {
-  snapshot: SnapshotData;
-  networkRecords: NetworkRecord[];
-};
-
-const safeFilename = (input: string) => {
-  const trimmed = input.trim();
-  if (!trimmed) {
-    return "snapshot";
-  }
-  return (
-    trimmed
-      .replace(/[^a-zA-Z0-9._-]+/g, "_")
-      .replace(/^_+|_+$/g, "")
-      .slice(0, 120) || "snapshot"
-  );
-};
-
-const parseRequestsJson = (requestsJSON: RequestsInput): ParsedRequests => {
-  const snapshot =
-    typeof requestsJSON === "string" ? (JSON.parse(requestsJSON) as SnapshotData) : requestsJSON;
-
-  const rawNetworkRecords = (snapshot.networkRecords || []) as CapturedNetworkRecord[];
-  const mappedNetworkRecords = mapCapturedNetworkRecords(rawNetworkRecords);
-
-  return {
-    snapshot,
-    networkRecords: mappedNetworkRecords
-  };
-};
+import { NetworkStore } from "./network-store";
 
 export class PagePocket {
-  private htmlString: string;
-  private requestsJSON: RequestsInput;
+  private target: InterceptTarget;
   private options: PagePocketOptions;
 
-  resources: SnapshotData["resources"] = [];
-  downloadedCount = 0;
-  failedCount = 0;
-
-  constructor(htmlString: string, requestsJSON: RequestsInput, options?: PagePocketOptions) {
-    this.htmlString = htmlString;
-    this.requestsJSON = requestsJSON;
+  private constructor(target: InterceptTarget, options?: PagePocketOptions) {
+    this.target = target;
     this.options = options ?? {};
   }
 
-  static async fromNetworkIntercetor(
-    htmlString: string,
-    url: string,
-    interceptorAdapter: NetworkInterceptorAdapter,
-    options?: PagePocketOptions
-  ) {
-    return new PagePocket(htmlString, await interceptorAdapter.run(url), options);
+  static fromURL(url: string, options?: PagePocketOptions): PagePocket {
+    return new PagePocket({ kind: "url", url }, options);
   }
 
-  async put(): Promise<PageContent> {
-    const { snapshot, networkRecords } = parseRequestsJson(this.requestsJSON);
-    const safeTitle = safeFilename(snapshot.title || "snapshot");
-    const assetsDirName = this.options.assetsDirName ?? `${safeTitle}_files`;
-    const baseUrl = this.options.baseUrl ?? snapshot.url ?? "";
-    const requestsPath = this.options.requestsPath ?? `${safeTitle}.requests.json`;
+  static fromTarget(target: InterceptTarget, options?: PagePocketOptions): PagePocket {
+    return new PagePocket(target, options);
+  }
 
-    const { $, resourceUrls, srcsetItems } = extractResourceUrls(this.htmlString, baseUrl);
-    const downloadResult = await downloadResources({
-      baseUrl,
-      assetsDirName,
-      resourceUrls,
-      srcsetItems,
-      referer: baseUrl
+  async capture(options?: CaptureOptions): Promise<PageSnapshot> {
+    if (!options?.interceptor) {
+      throw new Error("CaptureOptions.interceptor is required.");
+    }
+    const contentStore = options?.contentStore ?? new HybridContentStore();
+    const filter = options?.filter ?? createDefaultResourceFilter();
+    const pathResolver = options?.pathResolver ?? createDefaultPathResolver();
+    const rewriteEntry = options?.rewriteEntry ?? true;
+    const rewriteCSS = options?.rewriteCSS ?? true;
+    const limits = options?.limits;
+
+    const completionStrategies = normalizeCompletion(options?.completion);
+    const completion =
+      completionStrategies.length > 0
+        ? completionStrategies
+        : [networkIdle(1000), timeout(5000)];
+
+    const store = new NetworkStore({
+      contentStore,
+      filter,
+      limits
     });
 
-    this.resources = downloadResult.resourceMeta;
-    this.downloadedCount = downloadResult.downloadedCount;
-    this.failedCount = downloadResult.failedCount;
+    const inflight = new Set<string>();
+    let inflightRequests = 0;
+    let lastNetworkTs = Date.now();
+    let totalRequests = 0;
 
-    await rewriteLinks({
-      $,
-      resourceUrls,
-      srcsetItems,
-      baseUrl,
-      assetsDirName,
-      resourceMap: downloadResult.resourceMap as Map<string, DownloadedResource>,
-      networkRecords
-    });
+    const pendingEvents = new Set<Promise<void>>();
 
-    const faviconDataUrl = findFaviconDataUrl(networkRecords);
-    hackHtml({
-      $,
-      baseUrl,
-      requestsPath,
-      faviconDataUrl
-    });
+    const onEvent = (event: NetworkEvent) => {
+      if (event?.timestamp) {
+        lastNetworkTs = event.timestamp;
+      } else {
+        lastNetworkTs = Date.now();
+      }
+      if (event?.type === "request") {
+        totalRequests += 1;
+        if (!inflight.has(event.requestId)) {
+          inflight.add(event.requestId);
+          inflightRequests += 1;
+        }
+      }
+      if (event?.type === "response" || event?.type === "failed") {
+        if (inflight.delete(event.requestId)) {
+          inflightRequests = Math.max(0, inflightRequests - 1);
+        }
+      }
 
-    return {
-      content: $.html(),
-      title: safeTitle,
-      assetsDirName,
-      requestsPath,
-      baseUrl
+      const task = store.handleEvent(event);
+      pendingEvents.add(task);
+      task.finally(() => pendingEvents.delete(task));
     };
+
+    const session = await options.interceptor.start(this.target, { onEvent });
+    if (this.target.kind === "url" && session?.navigate) {
+      await session.navigate(this.target.url);
+    }
+
+    if (completion.length === 1) {
+      await completion[0].wait({
+        now: () => Date.now(),
+        getStats: () => ({
+          inflightRequests,
+          lastNetworkTs,
+          totalRequests
+        })
+      });
+    } else if (completion.length > 1) {
+      await Promise.race(
+        completion.map((strategy) =>
+          strategy.wait({
+            now: () => Date.now(),
+            getStats: () => ({
+              inflightRequests,
+              lastNetworkTs,
+              totalRequests
+            })
+          })
+        )
+      );
+    }
+
+    await session.stop();
+    await Promise.all(pendingEvents);
+
+    const entryUrl = this.target.kind === "url" ? this.target.url : "";
+
+    return buildSnapshot({
+      entryUrl,
+      createdAt: Date.now(),
+      resources: store.getResources(),
+      apiEntries: store.getApiEntries(),
+      contentStore,
+      pathResolver,
+      rewriteEntry,
+      rewriteCSS,
+      warnings: store.getWarnings()
+    });
   }
 }

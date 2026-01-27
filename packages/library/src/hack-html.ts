@@ -6,12 +6,12 @@ import { buildReplayScript } from "./replay-script";
 type HackHtmlInput = {
   $: CheerioAPI;
   baseUrl: string;
-  requestsPath: string;
+  apiPath: string;
   faviconDataUrl?: string | null;
 };
 
 export const hackHtml = (input: HackHtmlInput) => {
-  const replayScript = buildReplayScript(input.requestsPath, input.baseUrl);
+  const replayScript = buildReplayScript(input.apiPath, input.baseUrl);
   const preloadScript = `<script>${buildPreloadScript()}</script>`;
   const head = input.$("head");
   const root = input.$.root();
