@@ -1,8 +1,8 @@
-# 实现 PagePocket 兼容的 InterceptorAdapter
+# Implementing a PagePocket-Compatible InterceptorAdapter
 
-本文说明如何实现与 PagePocket 兼容的 `NetworkInterceptorAdapter`。适配器负责把具体工具的网络事件（Puppeteer/CDP/自研抓取器）转换为统一事件流，供 PagePocket 生成快照。
+This document explains how to implement a `NetworkInterceptorAdapter` compatible with PagePocket. An adapter converts tool-specific network events (Puppeteer/CDP/custom capture) into the standardized event stream used by PagePocket to build snapshots.
 
-## 核心接口
+## Core Interface
 
 ```ts
 interface NetworkInterceptorAdapter {
@@ -26,8 +26,8 @@ type InterceptTarget =
   | { kind: 'cdp-session'; session: unknown }
 ```
 
-- `kind: 'url'`：适配器负责导航（如果实现了 `session.navigate`）。
-- 其余类型：由调用方传入已有上下文/页面，适配器只负责拦截。
+- `kind: 'url'`: the adapter performs navigation (if it implements `session.navigate`).
+- Other kinds: the caller provides an existing context/page and the adapter only intercepts.
 
 ### InterceptorCapabilities
 
@@ -40,9 +40,9 @@ interface InterceptorCapabilities {
 }
 ```
 
-> 注意：能力声明用于 PagePocket 评估可用信息，实际行为仍以事件内容为准。
+> Note: capabilities are for PagePocket to understand what may be available. Actual behavior is determined by the events you emit.
 
-## 事件规范（必须遵守）
+## Event Contract (Must Follow)
 
 ### Request
 
@@ -95,32 +95,32 @@ interface NetworkRequestFailedEvent {
 }
 ```
 
-## 适配器实现要点
+## Implementation Guidelines
 
-1) **事件顺序**
-- 同一 `requestId` 必须先发 `request`，再发 `response` 或 `failed`。
-- `timestamp` 应为毫秒级时间戳（如 `Date.now()`）。
+1) **Event order**
+- For the same `requestId`, emit `request` before `response` or `failed`.
+- `timestamp` should be a millisecond epoch (e.g. `Date.now()`).
 
-2) **requestId 关联**
-- `requestId` 用于关联请求与响应/失败，必须稳定一致。
+2) **requestId correlation**
+- `requestId` links request/response/failure and must be stable and consistent.
 
-3) **response body 提供方式**
-- 推荐直接提供 `body`：
-  - `buffer`：已拿到完整字节
-  - `stream`：可流式读取
-  - `late`：延迟读取（适合 Puppeteer/CDP 的 `response.buffer()`）
+3) **Providing response bodies**
+- Prefer including `body`:
+  - `buffer`: complete bytes available
+  - `stream`: streaming available
+  - `late`: deferred read (fits Puppeteer/CDP `response.buffer()`)
 
-4) **不要在 PagePocket core 里发起网络请求**
-- 如果适配器需要主动 fetch（例如 Lighterceptor），必须在适配器内部完成，并通过 `response` 事件提供 body。
+4) **No auto-fetch in PagePocket core**
+- If the adapter needs to actively fetch (e.g. Lighterceptor), it must do so inside the adapter and emit a `response` event with body.
 
 5) **resourceType**
-- 如果可提供 `resourceType`，务必填写（`document/stylesheet/script/image/font/media/xhr/fetch/...`）。
-- `fetch/xhr` 只用于生成 `api.json`，不会作为资源文件保存。
+- Provide `resourceType` whenever possible (`document/stylesheet/script/image/font/media/xhr/fetch/...`).
+- `fetch/xhr` are recorded into `api.json` only and are not saved as files.
 
-6) **多文档/iframe 支持**
-- 若能提供 `frameId` 或 `initiator.url`，请尽量提供，用于多文档分组。
+6) **Multi-document/iframe support**
+- Provide `frameId` or `initiator.url` when available; these are used for multi-document grouping.
 
-## 典型实现骨架
+## Typical Skeleton
 
 ```ts
 class MyAdapter implements NetworkInterceptorAdapter {
@@ -150,12 +150,11 @@ class MyAdapter implements NetworkInterceptorAdapter {
 }
 ```
 
-## 兼容性检查清单
+## Compatibility Checklist
 
-- [ ] request/response/failed 事件结构正确
-- [ ] requestId 关联无误
-- [ ] response body 通过 `BodySource` 提供
-- [ ] resourceType 尽可能准确
-- [ ] 不在 PagePocket core 内发起 fetch
-- [ ] 支持多文档时提供 frameId/initiator
-
+- [ ] request/response/failed event shape is correct
+- [ ] requestId correlation is correct
+- [ ] response body provided via `BodySource`
+- [ ] resourceType is accurate when possible
+- [ ] no network fetch inside PagePocket core
+- [ ] provide frameId/initiator for multi-document cases
