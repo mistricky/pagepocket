@@ -188,6 +188,7 @@ export class Lighterceptor {
           networkRecords: requestOnly ? [] : networkRecords
         };
       }
+      recordUrl(initialUrl, "resource");
       initialInput = result.text;
     }
 
