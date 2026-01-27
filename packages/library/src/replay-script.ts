@@ -1,5 +1,162 @@
 import { replayHackers } from "./hackers";
 import type { HackerContext } from "./hackers/types";
+import type { ApiRecord } from "./types";
+
+export type MatchApiOptions = {
+  records: ApiRecord[];
+  byKey?: Map<string, ApiRecord>;
+  baseUrl: string;
+  method: string;
+  url: string;
+  body?: unknown;
+};
+
+export function matchAPI(options: MatchApiOptions): ApiRecord | undefined {
+  const { records, byKey, baseUrl, method, url, body } = options;
+
+  const normalizeBody = (value: unknown) => {
+    if (value === undefined || value === null) return "";
+    if (typeof value === "string") return value;
+    try {
+      return String(value);
+    } catch {
+      return "";
+    }
+  };
+
+  const normalizeUrl = (input: string) => {
+    try {
+      return new URL(input, baseUrl).toString();
+    } catch {
+      return input;
+    }
+  };
+
+  const stripHash = (value: string) => {
+    const index = value.indexOf("#");
+    return index === -1 ? value : value.slice(0, index);
+  };
+
+  const stripTrailingSlash = (value: string) => {
+    if (value.length > 1 && value.endsWith("/")) {
+      return value.slice(0, -1);
+    }
+    return value;
+  };
+
+  const safeUrl = (input: string) => {
+    try {
+      return new URL(input, baseUrl);
+    } catch {
+      return null;
+    }
+  };
+
+  const toPathSearch = (input: string) => {
+    const parsed = safeUrl(input);
+    if (!parsed) return input;
+    return parsed.pathname + parsed.search;
+  };
+
+  const toPathname = (input: string) => {
+    const parsed = safeUrl(input);
+    return parsed ? parsed.pathname : input;
+  };
+
+  const buildUrlVariants = (input: string) => {
+    const variants = new Set<string>();
+    const push = (value: string | undefined | null) => {
+      if (!value) return;
+      variants.add(value);
+    };
+
+    const raw = String(input ?? "");
+    push(raw);
+    push(stripHash(raw));
+    push(stripTrailingSlash(raw));
+    push(stripTrailingSlash(stripHash(raw)));
+
+    const absolute = normalizeUrl(raw);
+    push(absolute);
+    const absoluteNoHash = stripHash(absolute);
+    push(absoluteNoHash);
+    push(stripTrailingSlash(absoluteNoHash));
+
+    const pathSearch = toPathSearch(raw);
+    push(pathSearch);
+    push(stripTrailingSlash(pathSearch));
+
+    const pathname = toPathname(raw);
+    push(pathname);
+    push(stripTrailingSlash(pathname));
+
+    return Array.from(variants);
+  };
+
+  const makeKey = (keyMethod: string, keyUrl: string, keyBody: string) =>
+    keyMethod.toUpperCase() + " " + normalizeUrl(keyUrl) + " " + normalizeBody(keyBody);
+
+  const urlVariants = buildUrlVariants(url);
+  const bodyValue = normalizeBody(body);
+  const methodValue = (method || "GET").toUpperCase();
+
+  const tryLookup = (keyMethod: string, keyBody: string) => {
+    if (!byKey) return undefined;
+    for (const urlVariant of urlVariants) {
+      const record = byKey.get(makeKey(keyMethod, urlVariant, keyBody));
+      if (record) return record;
+    }
+    return undefined;
+  };
+
+  const matchOrder: Array<[string, string]> = [
+    [methodValue, bodyValue],
+    [methodValue, ""],
+    ["GET", ""],
+    ["GET", bodyValue]
+  ];
+
+  for (const [keyMethod, keyBody] of matchOrder) {
+    const record = tryLookup(keyMethod, keyBody);
+    if (record) return record;
+  }
+
+  const urlMatches = (inputUrl: string, recordUrl: string) => {
+    const inputAbs = stripHash(normalizeUrl(inputUrl));
+    const recordAbs = stripHash(normalizeUrl(recordUrl));
+    if (inputAbs === recordAbs) return true;
+
+    const inputPathSearch = stripTrailingSlash(toPathSearch(inputUrl));
+    const recordPathSearch = stripTrailingSlash(toPathSearch(recordUrl));
+    if (inputPathSearch === recordPathSearch) return true;
+
+    const inputPath = stripTrailingSlash(toPathname(inputUrl));
+    const recordPath = stripTrailingSlash(toPathname(recordUrl));
+    if (inputPath === recordPath) return true;
+
+    return false;
+  };
+
+  const scanRecords = (keyMethod: string, keyBody: string) => {
+    for (const record of records || []) {
+      if (!record || !record.url || !record.method) continue;
+      if (record.method.toUpperCase() !== keyMethod) continue;
+      if (!urlMatches(url, record.url)) continue;
+
+      const recordBody = record.requestBody || record.requestBodyBase64 || "";
+      if (keyBody && recordBody !== keyBody) continue;
+      return record;
+    }
+    return undefined;
+  };
+
+  for (const [keyMethod, keyBody] of matchOrder) {
+    const record = scanRecords(keyMethod, keyBody);
+    if (record) return record;
+  }
+
+  return undefined;
+}
 
 export const buildReplayScript = (apiPath: string, baseUrl: string) => {
   const basePayload = JSON.stringify(baseUrl);
@@ -71,6 +228,8 @@ export const buildReplayScript = (apiPath: string, baseUrl: string) => {
   const makeKey = (method, url, body) => method.toUpperCase() + " " + normalizeUrl(url) + " " + normalizeBody(body);
   const makeVariantKeys = (method, url, body) => [makeKey(method, url, body)];
 
+  const matchAPI = ${matchAPI.toString()};
+
   const primeLookups = (snapshot) => {
     records = snapshot.records || [];
     byKey.clear();
@@ -99,20 +258,12 @@ export const buildReplayScript = (apiPath: string, baseUrl: string) => {
   };
 
   const findRecord = (method, url, body) => {
-    const key = makeKey(method, url, body);
-    if (byKey.has(key)) return byKey.get(key);
-    const fallbackKey = makeKey(method, url, "");
-    if (byKey.has(fallbackKey)) return byKey.get(fallbackKey);
-    const getKey = makeKey("GET", url, "");
-    if (byKey.has(getKey)) return byKey.get(getKey);
-    return null;
+    return matchAPI({ records, byKey, baseUrl, method, url, body });
   };
 
   const findByUrl = (url) => {
     if (isLocalResource(url)) return null;
-    const direct = byKey.get(makeKey("GET", url, ""));
-    if (direct) return direct;
-    return null;
+    return matchAPI({ records, byKey, baseUrl, method: "GET", url, body: "" });
   };
 
   const findLocalPath = () => null;
