@@ -1,8 +1,14 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
+import { mkdtemp, rm } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 
 import { PagePocket } from "../src/pagepocket";
 import type {
+  BodySource,
+  ContentRef,
+  ContentStore,
   NetworkEvent,
   NetworkEventHandlers,
   NetworkInterceptorAdapter
@@ -281,4 +287,83 @@ test("PagePocket.capture skips 4xx documents by default", async () => {
 
   const paths = snapshot.files.map((file) => file.path);
   assert.deepEqual(paths, ["/api.json"]);
+});
+
+test("PageSnapshot.toDirectory clears cache by default and can be disabled", async () => {
+  let disposeCalls = 0;
+  const store: { map: Map<string, Uint8Array>; dispose?: () => Promise<void> } = {
+    map: new Map(),
+    dispose: async () => {
+      disposeCalls += 1;
+    }
+  };
+
+  const contentStore: ContentStore = {
+    name: "memory",
+    async put(body: BodySource, _meta: { url: string }) {
+      if (body.kind !== "buffer") {
+        throw new Error("Unexpected body source in test.");
+      }
+      const id = `id_${store.map.size}`;
+      store.map.set(id, body.data);
+      const ref: ContentRef = { kind: "store-ref", id };
+      return ref;
+    },
+    async open(ref: ContentRef) {
+      const data = ref.kind === "memory" ? ref.data : store.map.get(ref.id) ?? new Uint8Array();
+      return new ReadableStream<Uint8Array>({
+        start(controller) {
+          controller.enqueue(data);
+          controller.close();
+        }
+      });
+    },
+    async dispose() {
+      await store.dispose?.();
+    }
+  };
+
+  const events: NetworkEvent[] = [
+    {
+      type: "request",
+      requestId: "doc",
+      url: "https://example.com/",
+      method: "GET",
+      headers: {},
+      resourceType: "document",
+      timestamp: 1
+    },
+    {
+      type: "response",
+      requestId: "doc",
+      url: "https://example.com/",
+      status: 200,
+      headers: { "content-type": "text/html" },
+      timestamp: 2,
+      body: { kind: "buffer", data: new TextEncoder().encode("<html></html>") }
+    }
+  ];
+
+  const interceptor = createMockAdapter(events);
+  const snapshot = await PagePocket.fromURL("https://example.com/").capture({
+    interceptor,
+    contentStore,
+    completion: { wait: async () => {} }
+  });
+
+  const outDir = await mkdtemp(join(tmpdir(), "pagepocket-out-"));
+  try {
+    await snapshot.toDirectory(outDir);
+    assert.equal(disposeCalls, 1);
+
+    const snapshot2 = await PagePocket.fromURL("https://example.com/").capture({
+      interceptor,
+      contentStore,
+      completion: { wait: async () => {} }
+    });
+    await snapshot2.toDirectory(outDir, { clearCache: false });
+    assert.equal(disposeCalls, 1);
+  } finally {
+    await rm(outDir, { recursive: true, force: true });
+  }
 });

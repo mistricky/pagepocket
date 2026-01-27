@@ -21,6 +21,11 @@ const streamFromBytes = (data: Uint8Array) =>
     }
   });
 
+const isNodeEnvironment = () => {
+  const globalProcess = (globalThis as { process?: { versions?: { node?: string } } }).process;
+  return typeof globalProcess?.versions?.node === "string";
+};
+
 export class HybridContentStore implements ContentStore {
   name = "hybrid";
   private thresholdBytes: number;
@@ -61,5 +66,19 @@ export class HybridContentStore implements ContentStore {
     await Promise.all(
       entries.map((id) => remove(`${this.baseDir}/${id}`, "bin").catch(() => {}))
     );
+    await this.removeBaseDir().catch(() => {});
+  }
+
+  private async removeBaseDir(): Promise<void> {
+    if (!isNodeEnvironment()) {
+      return;
+    }
+    if (!this.baseDir || this.baseDir === "/" || this.baseDir === ".") {
+      return;
+    }
+    const { resolve, isAbsolute } = await import("node:path");
+    const { rm } = await import("node:fs/promises");
+    const target = isAbsolute(this.baseDir) ? this.baseDir : resolve(this.baseDir);
+    await rm(target, { recursive: true, force: true });
   }
 }

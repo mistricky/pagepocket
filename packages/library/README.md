@@ -62,8 +62,17 @@ interface PageSnapshot {
   url: string;
   entry: string;
   files: SnapshotFile[];
-  toDirectory(outDir: string): Promise<WriteResult>;
+  toDirectory(outDir: string, options?: WriteFSOptions): Promise<WriteResult>;
   toZip(options?: ZipOptions): Promise<Uint8Array | Blob>;
+}
+
+interface WriteFSOptions {
+  clearCache?: boolean;
+}
+
+interface ZipOptions {
+  asBlob?: boolean;
+  clearCache?: boolean;
 }
 ```
 

@@ -185,7 +185,7 @@ export interface PageSnapshot {
 }
 
 export interface WriteFSOptions {
-  // placeholder for future options
+  clearCache?: boolean;
 }
 
 export interface WriteResult {
@@ -195,6 +195,7 @@ export interface WriteResult {
 
 export interface ZipOptions {
   asBlob?: boolean;
+  clearCache?: boolean;
 }
 
 export interface ApiRecord {

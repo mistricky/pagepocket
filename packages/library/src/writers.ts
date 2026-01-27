@@ -51,7 +51,7 @@ const streamToUint8Array = async (stream: ReadableStream<Uint8Array>) => {
 export const writeToFS = async (
   snapshot: PageSnapshot,
   outDir: string,
-  _options?: WriteFSOptions
+  options?: WriteFSOptions
 ): Promise<WriteResult> => {
   let filesWritten = 0;
   let totalBytes = 0;
@@ -65,6 +65,10 @@ export const writeToFS = async (
     await write(filename, extension, data);
     filesWritten += 1;
     totalBytes += data.byteLength;
+  }
+
+  if (options?.clearCache ?? true) {
+    await snapshot.content.dispose?.();
   }
 
   return { filesWritten, totalBytes };
@@ -185,8 +189,13 @@ export const toZip = async (
   ]);
 
   const zipBytes = concatBytes([...localChunks, centralDirectory, endRecord]);
-  if (options?.asBlob && typeof Blob !== "undefined") {
-    return new Blob([zipBytes], { type: "application/zip" });
+  const output = options?.asBlob && typeof Blob !== "undefined"
+    ? new Blob([zipBytes], { type: "application/zip" })
+    : zipBytes;
+
+  if (options?.clearCache ?? true) {
+    await snapshot.content.dispose?.();
   }
-  return zipBytes;
+
+  return output;
 };
