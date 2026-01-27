@@ -50,13 +50,21 @@ export const replayXhrResponder: ScriptHacker = {
             defineProp(xhr, "response", responseText);
             defineProp(xhr, "responseText", responseText);
           }
+          const makeEvent = (type) => {
+            const event = new Event(type);
+            try {
+              defineProp(event, "target", xhr);
+              defineProp(event, "currentTarget", xhr);
+            } catch {}
+            return event;
+          };
           if (typeof xhr.onreadystatechange === "function") xhr.onreadystatechange();
-          if (typeof xhr.onload === "function") xhr.onload(new Event("load"));
-          if (typeof xhr.onloadend === "function") xhr.onloadend(new Event("loadend"));
+          if (typeof xhr.onload === "function") xhr.onload(makeEvent("load"));
+          if (typeof xhr.onloadend === "function") xhr.onloadend(makeEvent("loadend"));
           if (xhr.dispatchEvent) {
-            xhr.dispatchEvent(new Event("readystatechange"));
-            xhr.dispatchEvent(new Event("load"));
-            xhr.dispatchEvent(new Event("loadend"));
+            xhr.dispatchEvent(makeEvent("readystatechange"));
+            xhr.dispatchEvent(makeEvent("load"));
+            xhr.dispatchEvent(makeEvent("loadend"));
           }
         }, 0);
         return;
@@ -71,13 +79,21 @@ export const replayXhrResponder: ScriptHacker = {
         defineProp(xhr, "statusText", statusText);
         defineProp(xhr, "response", "");
         defineProp(xhr, "responseText", "");
+        const makeEvent = (type) => {
+          const event = new Event(type);
+          try {
+            defineProp(event, "target", xhr);
+            defineProp(event, "currentTarget", xhr);
+          } catch {}
+          return event;
+        };
         if (typeof xhr.onreadystatechange === "function") xhr.onreadystatechange();
-        if (typeof xhr.onload === "function") xhr.onload(new Event("load"));
-        if (typeof xhr.onloadend === "function") xhr.onloadend(new Event("loadend"));
+        if (typeof xhr.onload === "function") xhr.onload(makeEvent("load"));
+        if (typeof xhr.onloadend === "function") xhr.onloadend(makeEvent("loadend"));
         if (xhr.dispatchEvent) {
-          xhr.dispatchEvent(new Event("readystatechange"));
-          xhr.dispatchEvent(new Event("load"));
-          xhr.dispatchEvent(new Event("loadend"));
+          xhr.dispatchEvent(makeEvent("readystatechange"));
+          xhr.dispatchEvent(makeEvent("load"));
+          xhr.dispatchEvent(makeEvent("loadend"));
         }
       }, 0);
     });
