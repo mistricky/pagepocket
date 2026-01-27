@@ -5,6 +5,7 @@ export type LighterceptorOptions = {
   recursion?: boolean;
   requestOnly?: boolean;
   baseUrl?: string;
+  headers?: Record<string, string>;
 };
 
 export type RequestRecord = {

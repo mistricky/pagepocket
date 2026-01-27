@@ -1,8 +1,7 @@
 # @pagepocket/cli
 
-CLI for capturing offline snapshots of web pages. It fetches HTML, records network
-responses, downloads assets, rewrites links to local files, and injects a replay
-script so the snapshot works offline.
+CLI for capturing offline snapshots of web pages using the PagePocket library and
+NetworkInterceptorAdapter event streams.
 
 ## Install
 
@@ -19,18 +18,15 @@ pp https://example.com -o ./snapshots
 
 ## Output
 
-Snapshots are written to the current directory by default:
+Snapshots are written to a folder named after the page title (or `snapshot`) inside
+the output directory (default: current directory). Example layout:
 
-- `*.html`: offline snapshot page
-- `*.requests.json`: recorded requests/responses
-- `*_files/`: downloaded assets
-
-## Configuration
-
-Environment variables:
-
-- `PAGEPOCKET_FETCH_TIMEOUT_MS` (default: `60000`)
-- `PAGEPOCKET_FETCH_HEADERS` (JSON string of extra headers)
+```
+<output>/<title>/index.html
+<output>/<title>/api.json
+<output>/<title>/<same-origin paths>
+<output>/<title>/external_resources/<cross-origin paths>
+```
 
 ## Development
 

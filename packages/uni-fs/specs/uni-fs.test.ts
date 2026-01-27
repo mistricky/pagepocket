@@ -195,6 +195,26 @@ test("node: write() accepts Uint8Array and delete() removes the file", async () 
   assert.equal(await exists("assets/logo", "bin"), false);
 });
 
+test("node: absolute paths are honored for read/write/delete", async () => {
+  const absoluteBase = join(tempDir, "absolute", "file");
+  await write(absoluteBase, "txt", "abs");
+  const absolutePath = join(tempDir, "absolute", "file.txt");
+  const contents = await readFile(absolutePath, "utf8");
+  assert.equal(contents, "abs");
+
+  const url = await readAsURL(absoluteBase, "txt");
+  assert.equal(url, absolutePath);
+
+  assert.equal(await exists(absoluteBase, "txt"), true);
+  const text = await readText(absoluteBase, "txt");
+  assert.equal(text, "abs");
+  const binary = await readBinary(absoluteBase, "txt");
+  assert.deepEqual(Array.from(binary), Array.from(new TextEncoder().encode("abs")));
+
+  await deleteFile(absoluteBase, "txt");
+  assert.equal(await exists(absoluteBase, "txt"), false);
+});
+
 test("browser: write/read/delete uses OPFS and returns data URL", async () => {
   const { root } = createOpfsRoot();
   installOpfsNavigator(root);

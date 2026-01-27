@@ -60,7 +60,9 @@ export class Lighterceptor {
     const responseCache = new Map<string, Promise<FetchResult>>();
     const pendingNetwork: Array<Promise<void>> = [];
 
-    const fetchWithCache = createFetchWithCache(responseCache);
+    const fetchWithCache = createFetchWithCache(responseCache, {
+      headers: this.options.headers
+    });
 
     const recordNetwork = (url: string, source: RequestSource | "unknown") => {
       if (requestOnly || isSkippableUrl(url)) {
@@ -181,12 +183,8 @@ export class Lighterceptor {
     if (initialUrl) {
       const result = await fetchWithCache(initialUrl);
       if (!result.ok || !result.text) {
-        return {
-          title: undefined,
-          capturedAt,
-          requests,
-          networkRecords: requestOnly ? [] : networkRecords
-        };
+        const reason = result.error ?? "request-failed";
+        throw new Error(`Failed to fetch ${initialUrl}: ${reason}`);
       }
       recordUrl(initialUrl, "resource");
       initialInput = result.text;

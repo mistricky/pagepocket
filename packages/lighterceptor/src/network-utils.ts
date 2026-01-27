@@ -10,7 +10,10 @@ export type FetchResult = {
   error?: string;
 };
 
-export function createFetchWithCache(responseCache: Map<string, Promise<FetchResult>>) {
+export function createFetchWithCache(
+  responseCache: Map<string, Promise<FetchResult>>,
+  options?: { headers?: Record<string, string> }
+) {
   return (url: string) => {
     const existing = responseCache.get(url);
     if (existing) {
@@ -25,7 +28,9 @@ export function createFetchWithCache(responseCache: Map<string, Promise<FetchRes
       }
 
       try {
-        const response = await fetch(url);
+        const response = await fetch(url, {
+          headers: options?.headers
+        });
         const cloned = response.clone();
         const [buffer, text] = await Promise.all([response.arrayBuffer(), cloned.text()]);
         const headers: Record<string, string> = {};
@@ -56,9 +61,22 @@ export function createFetchWithCache(responseCache: Map<string, Promise<FetchRes
           buffer: Buffer.from(buffer)
         };
       } catch (error) {
+        let message = error instanceof Error ? error.message : String(error);
+        const cause =
+          error && typeof error === "object" && "cause" in error
+            ? (error as { cause?: unknown }).cause
+            : undefined;
+        if (cause instanceof Error && cause.message) {
+          message = cause.message;
+        } else if (cause && typeof cause === "object" && "code" in cause) {
+          const code = (cause as { code?: string }).code;
+          if (code) {
+            message = `${message} (${code})`;
+          }
+        }
         return {
           ok: false,
-          error: error instanceof Error ? error.message : String(error)
+          error: message
         };
       }
     })();

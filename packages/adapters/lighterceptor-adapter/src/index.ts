@@ -59,10 +59,15 @@ const toRequestEvent = (record: {
   source?: string;
   timestamp: number;
   headers?: Record<string, string>;
+  responseHeaders?: Record<string, string>;
   requestId: string;
 }) => {
   const headers = record.headers ?? {};
-  const resourceType = inferResourceType(record.source, headers);
+  const headersForType =
+    record.responseHeaders && Object.keys(record.responseHeaders).length > 0
+      ? record.responseHeaders
+      : headers;
+  const resourceType = inferResourceType(record.source, headersForType);
   const event: NetworkRequestEvent = {
     type: "request",
     requestId: record.requestId,
@@ -81,7 +86,7 @@ export class LighterceptorAdapter implements NetworkInterceptorAdapter {
     canGetResponseBody: true,
     canStreamResponseBody: false,
     canGetRequestBody: false,
-    providesResourceType: false
+    providesResourceType: true
   };
 
   private options: LighterceptorAdapterOptions;
@@ -114,6 +119,7 @@ export class LighterceptorAdapter implements NetworkInterceptorAdapter {
         method: record.method || "GET",
         source: record.source,
         timestamp: record.timestamp,
+        responseHeaders: record.response?.headers,
         requestId
       });
       handlers.onEvent(requestEvent);

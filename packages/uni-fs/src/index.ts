@@ -167,9 +167,9 @@ export async function exists(filename: string, extension: string): Promise<boole
   }
 
   if (isNodeEnvironment()) {
-    const { join } = await import("node:path");
+    const { join, isAbsolute } = await import("node:path");
     const { access } = await import("node:fs/promises");
-    const outputPath = join(getNodeCwd(), fileName);
+    const outputPath = isAbsolute(fileName) ? fileName : join(getNodeCwd(), fileName);
     try {
       await access(outputPath);
       return true;
@@ -197,9 +197,9 @@ export async function readBinary(filename: string, extension: string): Promise<U
   }
 
   if (isNodeEnvironment()) {
-    const { join } = await import("node:path");
+    const { join, isAbsolute } = await import("node:path");
     const { readFile } = await import("node:fs/promises");
-    const outputPath = join(getNodeCwd(), fileName);
+    const outputPath = isAbsolute(fileName) ? fileName : join(getNodeCwd(), fileName);
     const buffer = await readFile(outputPath);
     return new Uint8Array(buffer);
   }
@@ -222,9 +222,9 @@ export async function readText(filename: string, extension: string): Promise<str
   }
 
   if (isNodeEnvironment()) {
-    const { join } = await import("node:path");
+    const { join, isAbsolute } = await import("node:path");
     const { readFile } = await import("node:fs/promises");
-    const outputPath = join(getNodeCwd(), fileName);
+    const outputPath = isAbsolute(fileName) ? fileName : join(getNodeCwd(), fileName);
     return readFile(outputPath, "utf-8");
   }
 
@@ -249,7 +249,8 @@ export async function readAsURL(filename: string, extension: string): Promise<st
   }
 
   if (isNodeEnvironment()) {
-    return `/${fileName}`;
+    const { isAbsolute } = await import("node:path");
+    return isAbsolute(fileName) ? fileName : `/${fileName}`;
   }
 
   throw new Error(OPFS_ERROR_MESSAGE);
@@ -275,9 +276,9 @@ export async function write(filename: string, extension: string, data: WriteData
   }
 
   if (isNodeEnvironment()) {
-    const { dirname, join } = await import("node:path");
+    const { dirname, join, isAbsolute } = await import("node:path");
     const { writeFile, mkdir } = await import("node:fs/promises");
-    const outputPath = join(getNodeCwd(), fileName);
+    const outputPath = isAbsolute(fileName) ? fileName : join(getNodeCwd(), fileName);
     await mkdir(dirname(outputPath), { recursive: true });
     const writableData = await dataToNodeWritable(data);
     await writeFile(outputPath, writableData);
@@ -301,9 +302,9 @@ export async function remove(filename: string, extension: string): Promise<void>
   }
 
   if (isNodeEnvironment()) {
-    const { join } = await import("node:path");
+    const { join, isAbsolute } = await import("node:path");
     const { unlink } = await import("node:fs/promises");
-    const outputPath = join(getNodeCwd(), fileName);
+    const outputPath = isAbsolute(fileName) ? fileName : join(getNodeCwd(), fileName);
     await unlink(outputPath);
     return;
   }

@@ -218,3 +218,67 @@ test("PagePocket.capture groups multiple documents into separate directories", a
   assert.ok(paths.includes("/foo/api.json"));
   assert.ok(paths.includes("/bar/api.json"));
 });
+
+test("PagePocket.capture writes api.json even when no document is saved", async () => {
+  const events: NetworkEvent[] = [
+    {
+      type: "request",
+      requestId: "fetch",
+      url: "https://example.com/api/data",
+      method: "GET",
+      headers: {},
+      resourceType: "fetch",
+      timestamp: 1
+    },
+    {
+      type: "response",
+      requestId: "fetch",
+      url: "https://example.com/api/data",
+      status: 200,
+      headers: { "content-type": "application/json" },
+      timestamp: 2,
+      body: { kind: "buffer", data: new TextEncoder().encode('{"ok":true}') }
+    }
+  ];
+
+  const interceptor = createMockAdapter(events);
+  const snapshot = await PagePocket.fromURL("https://example.com/").capture({
+    interceptor,
+    completion: { wait: async () => {} }
+  });
+
+  const paths = snapshot.files.map((file) => file.path);
+  assert.deepEqual(paths, ["/api.json"]);
+});
+
+test("PagePocket.capture skips 4xx documents by default", async () => {
+  const events: NetworkEvent[] = [
+    {
+      type: "request",
+      requestId: "doc",
+      url: "https://example.com/",
+      method: "GET",
+      headers: {},
+      resourceType: "document",
+      timestamp: 1
+    },
+    {
+      type: "response",
+      requestId: "doc",
+      url: "https://example.com/",
+      status: 403,
+      headers: { "content-type": "text/html" },
+      timestamp: 2,
+      body: { kind: "buffer", data: new TextEncoder().encode("<html></html>") }
+    }
+  ];
+
+  const interceptor = createMockAdapter(events);
+  const snapshot = await PagePocket.fromURL("https://example.com/").capture({
+    interceptor,
+    completion: { wait: async () => {} }
+  });
+
+  const paths = snapshot.files.map((file) => file.path);
+  assert.deepEqual(paths, ["/api.json"]);
+});
