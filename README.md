@@ -14,6 +14,7 @@ replay script so the snapshot runs without a network connection.
 
 - `@pagepocket/cli`: CLI for capturing snapshots.
 - `@pagepocket/lib`: HTML rewrite and replay injection library.
+- `@pagepocket/cdp-adapter`: Chrome DevTools Protocol adapter (for extension/service worker capture).
 - `@pagepocket/lighterceptor`: jsdom-based request capture engine.
 - `@pagepocket/uni-fs`: Node + OPFS filesystem helpers.
 
@@ -73,4 +74,10 @@ Environment variables:
 ```bash
 pnpm install
 pnpm -r build
+```
+
+Run adapter tests:
+
+```bash
+pnpm -F @pagepocket/cdp-adapter test
 ```

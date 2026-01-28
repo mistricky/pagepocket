@@ -1,0 +1,28 @@
+{
+  "name": "@pagepocket/cdp-adapter",
+  "version": "0.4.3",
+  "description": "Chrome DevTools Protocol adapter for PagePocket network interception.",
+  "type": "module",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "test": "tsx --test specs/**/*.test.ts"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "packageManager": "pnpm@10.25.0",
+  "files": [
+    "dist"
+  ],
+  "dependencies": {
+    "@pagepocket/lib": "workspace:*",
+    "chrome-remote-interface": "^0.33.2"
+  },
+  "devDependencies": {
+    "@types/node": "^20.17.12",
+    "tsx": "^4.21.0",
+    "typescript": "^5.7.2"
+  }
+}

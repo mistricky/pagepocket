@@ -14,9 +14,9 @@ pnpm add @pagepocket/lib
 
 ```ts
 import { PagePocket } from "@pagepocket/lib";
-import { SomeInterceptorAdapter } from "@pagepocket/adapters";
+import { CdpAdapter } from "@pagepocket/cdp-adapter";
 
-const interceptor = new SomeInterceptorAdapter();
+const interceptor = new CdpAdapter();
 const snapshot = await PagePocket.fromURL("https://example.com").capture({
   interceptor
 });
