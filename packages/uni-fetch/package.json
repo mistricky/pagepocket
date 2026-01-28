@@ -1,6 +1,6 @@
 {
   "name": "@pagepocket/uni-fetch",
-  "version": "0.5.0",
+  "version": "0.5.1",
   "description": "Unified fetch wrapper with environment-specific behavior.",
   "type": "module",
   "main": "dist/index.js",

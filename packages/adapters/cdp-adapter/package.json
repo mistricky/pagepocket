@@ -1,6 +1,6 @@
 {
   "name": "@pagepocket/cdp-adapter",
-  "version": "0.5.0",
+  "version": "0.5.1",
   "description": "Chrome DevTools Protocol adapter for PagePocket network interception.",
   "type": "module",
   "main": "dist/index.js",
