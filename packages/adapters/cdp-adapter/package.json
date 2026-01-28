@@ -21,6 +21,7 @@
     "chrome-remote-interface": "^0.33.2"
   },
   "devDependencies": {
+    "@types/chrome-remote-interface": "^0.33.0",
     "@types/node": "^20.17.12",
     "tsx": "^4.21.0",
     "typescript": "^5.7.2"

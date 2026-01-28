@@ -9,12 +9,9 @@ import type {
   ResourceType
 } from "@pagepocket/lib";
 import CDP from "chrome-remote-interface";
+import type CDPTypes from "chrome-remote-interface";
 
-type CdpConnectionOptions = {
-  host?: string;
-  port?: number;
-  target?: string | number;
-};
+type CdpConnectionOptions = CDPTypes.Options;
 
 type CdpClient = {
   send?: (method: string, params?: Record<string, unknown>) => Promise<unknown>;
@@ -41,7 +38,7 @@ type CdpClient = {
 export type CdpAdapterOptions = {
   host?: string;
   port?: number;
-  target?: string | number;
+  target?: CdpConnectionOptions["target"];
   clientFactory?: (options: CdpConnectionOptions) => Promise<CdpClient>;
 };
 
@@ -206,13 +203,22 @@ export class CdpAdapter implements NetworkInterceptorAdapter {
           target: options.target
         }) as unknown as Promise<CdpClient>);
 
+    const resolveTabTarget = (tabId: number): CdpConnectionOptions["target"] => {
+      return (targets) => {
+        const match = targets.find((entry) => entry.id === String(tabId));
+        if (match) return match;
+        if (tabId >= 0 && tabId < targets.length) return tabId;
+        return targets[0] ?? 0;
+      };
+    };
+
     const client =
       target.kind === "cdp-session"
         ? (target.session as CdpClient)
         : await clientFactory({
             host: this.options.host,
             port: this.options.port,
-            target: this.options.target ?? target.tabId
+            target: this.options.target ?? resolveTabTarget(target.tabId)
           });
     const ownsClient = target.kind !== "cdp-session";
 
