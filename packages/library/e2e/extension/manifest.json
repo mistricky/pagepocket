@@ -1,0 +1,18 @@
+{
+  "manifest_version": 3,
+  "name": "PagePocket E2E Saver",
+  "version": "0.1.0",
+  "description": "Saves https://ciechanow.ski/moon/ to OPFS for e2e tests.",
+  "permissions": ["storage"],
+  "host_permissions": ["https://ciechanow.ski/*"],
+  "content_scripts": [
+    {
+      "matches": ["https://ciechanow.ski/moon/*"],
+      "js": ["content.js"],
+      "run_at": "document_idle"
+    }
+  ],
+  "action": {
+    "default_title": "PagePocket E2E Saver"
+  }
+}
