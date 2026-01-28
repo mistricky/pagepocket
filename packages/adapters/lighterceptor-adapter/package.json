@@ -1,6 +1,6 @@
 {
   "name": "@pagepocket/lighterceptor-adapter",
-  "version": "0.4.3",
+  "version": "0.5.0",
   "description": "Lighterceptor adapter for PagePocket network interception.",
   "type": "module",
   "main": "dist/index.js",
