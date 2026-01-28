@@ -1,8 +1,8 @@
 import assert from "node:assert/strict";
 import { describe, test } from "node:test";
 
-import { createDefaultResourceFilter } from "../src/resource-filter";
 import { NetworkStore } from "../src/network-store";
+import { createDefaultResourceFilter } from "../src/resource-filter";
 import type { BodySource, ContentRef, ContentStore, NetworkEvent } from "../src/types";
 
 class MemoryContentStore implements ContentStore {
@@ -80,7 +80,7 @@ describe("NetworkStore", () => {
         status: 200,
         headers: { "content-type": "application/json" },
         timestamp: 4,
-        body: { kind: "buffer", data: new TextEncoder().encode("{\"ok\":true}") }
+        body: { kind: "buffer", data: new TextEncoder().encode('{"ok":true}') }
       }
     ];
 

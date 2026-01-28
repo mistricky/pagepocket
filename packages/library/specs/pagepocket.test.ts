@@ -1,8 +1,8 @@
 import assert from "node:assert/strict";
-import { test } from "node:test";
 import { mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { test } from "node:test";
 
 import { PagePocket } from "../src/pagepocket";
 import type {
@@ -157,7 +157,7 @@ test("PagePocket.capture builds snapshot with rewritten HTML/CSS and api.json", 
   const entryFile = snapshot.files.find((file) => file.path === "/index.html");
   assert.ok(entryFile);
   const entryText = await streamToText(await snapshot.content.open(entryFile!.source));
-  assert.ok(entryText.includes('/styles.css'));
+  assert.ok(entryText.includes("/styles.css"));
 
   const cssFile = snapshot.files.find((file) => file.path === "/styles.css");
   assert.ok(cssFile);
@@ -310,7 +310,7 @@ test("PageSnapshot.toDirectory clears cache by default and can be disabled", asy
       return ref;
     },
     async open(ref: ContentRef) {
-      const data = ref.kind === "memory" ? ref.data : store.map.get(ref.id) ?? new Uint8Array();
+      const data = ref.kind === "memory" ? ref.data : (store.map.get(ref.id) ?? new Uint8Array());
       return new ReadableStream<Uint8Array>({
         start(controller) {
           controller.enqueue(data);

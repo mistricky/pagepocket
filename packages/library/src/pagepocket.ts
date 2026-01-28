@@ -1,5 +1,6 @@
-import { HybridContentStore } from "./content-store";
 import { networkIdle, normalizeCompletion, timeout } from "./completion";
+import { HybridContentStore } from "./content-store";
+import { NetworkStore } from "./network-store";
 import { createDefaultPathResolver } from "./path-resolver";
 import { createDefaultResourceFilter } from "./resource-filter";
 import { buildSnapshot } from "./snapshot-builder";
@@ -10,7 +11,6 @@ import type {
   PagePocketOptions,
   PageSnapshot
 } from "./types";
-import { NetworkStore } from "./network-store";
 
 export class PagePocket {
   private target: InterceptTarget;
@@ -42,9 +42,7 @@ export class PagePocket {
 
     const completionStrategies = normalizeCompletion(options?.completion);
     const completion =
-      completionStrategies.length > 0
-        ? completionStrategies
-        : [networkIdle(1000), timeout(5000)];
+      completionStrategies.length > 0 ? completionStrategies : [networkIdle(1000), timeout(5000)];
 
     const store = new NetworkStore({
       contentStore,

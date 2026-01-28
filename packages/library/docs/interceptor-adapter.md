@@ -6,13 +6,13 @@ This document explains how to implement a `NetworkInterceptorAdapter` compatible
 
 ```ts
 interface NetworkInterceptorAdapter {
-  readonly name: string
-  readonly capabilities: InterceptorCapabilities
+  readonly name: string;
+  readonly capabilities: InterceptorCapabilities;
   start(
     target: InterceptTarget,
     handlers: NetworkEventHandlers,
     options?: InterceptOptions
-  ): Promise<InterceptSession>
+  ): Promise<InterceptSession>;
 }
 ```
 
@@ -20,10 +20,10 @@ interface NetworkInterceptorAdapter {
 
 ```ts
 type InterceptTarget =
-  | { kind: 'url'; url: string }
-  | { kind: 'puppeteer-page'; page: unknown }
-  | { kind: 'cdp-tab'; tabId: number }
-  | { kind: 'cdp-session'; session: unknown }
+  | { kind: "url"; url: string }
+  | { kind: "puppeteer-page"; page: unknown }
+  | { kind: "cdp-tab"; tabId: number }
+  | { kind: "cdp-session"; session: unknown };
 ```
 
 - `kind: 'url'`: the adapter performs navigation (if it implements `session.navigate`).
@@ -33,10 +33,10 @@ type InterceptTarget =
 
 ```ts
 interface InterceptorCapabilities {
-  canGetResponseBody: boolean
-  canStreamResponseBody: boolean
-  canGetRequestBody: boolean
-  providesResourceType: boolean
+  canGetResponseBody: boolean;
+  canStreamResponseBody: boolean;
+  canGetRequestBody: boolean;
+  providesResourceType: boolean;
 }
 ```
 
@@ -48,15 +48,15 @@ interface InterceptorCapabilities {
 
 ```ts
 interface NetworkRequestEvent {
-  type: 'request'
-  requestId: string
-  url: string
-  method: string
-  headers: Record<string, string>
-  frameId?: string
-  resourceType?: ResourceType
-  initiator?: { type?: string; url?: string }
-  timestamp: number
+  type: "request";
+  requestId: string;
+  url: string;
+  method: string;
+  headers: Record<string, string>;
+  frameId?: string;
+  resourceType?: ResourceType;
+  initiator?: { type?: string; url?: string };
+  timestamp: number;
 }
 ```
 
@@ -64,22 +64,22 @@ interface NetworkRequestEvent {
 
 ```ts
 type BodySource =
-  | { kind: 'buffer'; data: Uint8Array }
-  | { kind: 'stream'; stream: ReadableStream<Uint8Array> }
-  | { kind: 'late'; read: () => Promise<Uint8Array> }
+  | { kind: "buffer"; data: Uint8Array }
+  | { kind: "stream"; stream: ReadableStream<Uint8Array> }
+  | { kind: "late"; read: () => Promise<Uint8Array> };
 
 interface NetworkResponseEvent {
-  type: 'response'
-  requestId: string
-  url: string
-  status: number
-  statusText?: string
-  headers: Record<string, string>
-  mimeType?: string
-  fromDiskCache?: boolean
-  fromServiceWorker?: boolean
-  timestamp: number
-  body?: BodySource
+  type: "response";
+  requestId: string;
+  url: string;
+  status: number;
+  statusText?: string;
+  headers: Record<string, string>;
+  mimeType?: string;
+  fromDiskCache?: boolean;
+  fromServiceWorker?: boolean;
+  timestamp: number;
+  body?: BodySource;
 }
 ```
 
@@ -87,50 +87,56 @@ interface NetworkResponseEvent {
 
 ```ts
 interface NetworkRequestFailedEvent {
-  type: 'failed'
-  requestId: string
-  url: string
-  errorText: string
-  timestamp: number
+  type: "failed";
+  requestId: string;
+  url: string;
+  errorText: string;
+  timestamp: number;
 }
 ```
 
 ## Implementation Guidelines
 
-1) **Event order**
+1. **Event order**
+
 - For the same `requestId`, emit `request` before `response` or `failed`.
 - `timestamp` should be a millisecond epoch (e.g. `Date.now()`).
 
-2) **requestId correlation**
+2. **requestId correlation**
+
 - `requestId` links request/response/failure and must be stable and consistent.
 
-3) **Providing response bodies**
+3. **Providing response bodies**
+
 - Prefer including `body`:
   - `buffer`: complete bytes available
   - `stream`: streaming available
   - `late`: deferred read (fits Puppeteer/CDP `response.buffer()`)
 
-4) **No auto-fetch in PagePocket core**
+4. **No auto-fetch in PagePocket core**
+
 - If the adapter needs to actively fetch (e.g. Lighterceptor), it must do so inside the adapter and emit a `response` event with body.
 
-5) **resourceType**
+5. **resourceType**
+
 - Provide `resourceType` whenever possible (`document/stylesheet/script/image/font/media/xhr/fetch/...`).
 - `fetch/xhr` are recorded into `api.json` only and are not saved as files.
 
-6) **Multi-document/iframe support**
+6. **Multi-document/iframe support**
+
 - Provide `frameId` or `initiator.url` when available; these are used for multi-document grouping.
 
 ## Typical Skeleton
 
 ```ts
 class MyAdapter implements NetworkInterceptorAdapter {
-  name = 'my-adapter'
+  name = "my-adapter";
   capabilities = {
     canGetResponseBody: true,
     canStreamResponseBody: false,
     canGetRequestBody: false,
     providesResourceType: true
-  }
+  };
 
   async start(target: InterceptTarget, handlers: NetworkEventHandlers): Promise<InterceptSession> {
     // 1. attach / setup event listeners
@@ -145,7 +151,7 @@ class MyAdapter implements NetworkInterceptorAdapter {
       stop: async () => {
         // teardown listeners, detach from target
       }
-    }
+    };
   }
 }
 ```

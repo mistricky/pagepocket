@@ -1,13 +1,6 @@
 import type { NetworkRequestEvent, NetworkResponseEvent, ResourceFilter } from "./types";
 
-const DEFAULT_ALLOWED = new Set([
-  "document",
-  "stylesheet",
-  "script",
-  "image",
-  "font",
-  "media"
-]);
+const DEFAULT_ALLOWED = new Set(["document", "stylesheet", "script", "image", "font", "media"]);
 
 const isSkippableUrl = (url: string) =>
   url.startsWith("data:") ||

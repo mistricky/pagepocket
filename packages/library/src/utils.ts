@@ -17,8 +17,7 @@ export const hashString = (value: string) => {
 
 export const stripLeadingSlash = (value: string) => value.replace(/^\/+/, "");
 
-export const ensureLeadingSlash = (value: string) =>
-  value.startsWith("/") ? value : `/${value}`;
+export const ensureLeadingSlash = (value: string) => (value.startsWith("/") ? value : `/${value}`);
 
 export const sanitizePosixPath = (value: string) => {
   const parts = value.split("/").filter(Boolean);

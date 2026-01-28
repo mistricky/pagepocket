@@ -1,8 +1,9 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 
-import { CdpAdapter } from "../src/index";
 import type { NetworkEvent } from "@pagepocket/lib";
+
+import { CdpAdapter } from "../src/index";
 
 type EventHandler = (payload: unknown) => void;
 

@@ -1,9 +1,9 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 
-import { PagePocket } from "@pagepocket/lib";
+import { PagePocket, type NetworkEvent } from "@pagepocket/lib";
+
 import { LighterceptorAdapter } from "../src/index";
-import type { NetworkEvent } from "@pagepocket/lib";
 
 type MockResponse = {
   status?: number;

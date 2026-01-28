@@ -49,10 +49,7 @@ export interface NetworkRequestFailedEvent {
   timestamp: number;
 }
 
-export type NetworkEvent =
-  | NetworkRequestEvent
-  | NetworkResponseEvent
-  | NetworkRequestFailedEvent;
+export type NetworkEvent = NetworkRequestEvent | NetworkResponseEvent | NetworkRequestFailedEvent;
 
 export interface NetworkEventHandlers {
   onEvent(event: NetworkEvent): void;
@@ -106,9 +103,7 @@ export interface ResourceFilter {
   shouldSave(req: NetworkRequestEvent, res?: NetworkResponseEvent): boolean;
 }
 
-export type ContentRef =
-  | { kind: "memory"; data: Uint8Array }
-  | { kind: "store-ref"; id: string };
+export type ContentRef = { kind: "memory"; data: Uint8Array } | { kind: "store-ref"; id: string };
 
 export interface ContentStore {
   name: string;

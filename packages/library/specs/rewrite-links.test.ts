@@ -42,7 +42,7 @@ test("rewriteEntryHtml rewrites HTML attributes, srcset, and module imports", as
 
   assert.ok(rewritten.html.includes('href="/styles.css"'));
   assert.ok(rewritten.html.includes('src="/hero.png"'));
-  assert.ok(rewritten.html.includes('/hero@2x.png 2x'));
+  assert.ok(rewritten.html.includes("/hero@2x.png 2x"));
   assert.ok(rewritten.html.includes('import app from "/app.js"'));
   assert.ok(rewritten.html.includes("/bg.png"));
   assert.ok(rewritten.html.includes("/inline.png"));

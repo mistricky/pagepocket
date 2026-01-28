@@ -1,5 +1,5 @@
-import { hashString, sanitizePosixPath } from "./utils";
 import type { PathResolver, ResourceType } from "./types";
+import { hashString, sanitizePosixPath } from "./utils";
 
 const normalizePathname = (pathname: string) => {
   const normalized = pathname || "/";
@@ -49,9 +49,7 @@ export const createDefaultPathResolver = (): PathResolver => {
       const queryHash = `${parsed?.search || ""}${parsed?.hash || ""}`;
       const suffix = queryHash ? `__ppq_${hashString(queryHash)}` : "";
 
-      const basePath = input.isCrossOrigin
-        ? `/external_resources${pathname}`
-        : `${pathname}`;
+      const basePath = input.isCrossOrigin ? `/external_resources${pathname}` : `${pathname}`;
       let resolvedPath = suffix ? withSuffix(basePath, suffix) : basePath;
 
       const collisionKey = resolvedPath;

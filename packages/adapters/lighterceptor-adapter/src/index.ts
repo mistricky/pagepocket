@@ -95,10 +95,7 @@ export class LighterceptorAdapter implements NetworkInterceptorAdapter {
     this.options = options;
   }
 
-  async start(
-    target: InterceptTarget,
-    handlers: NetworkEventHandlers
-  ): Promise<InterceptSession> {
+  async start(target: InterceptTarget, handlers: NetworkEventHandlers): Promise<InterceptSession> {
     if (target.kind !== "url") {
       throw new Error("LighterceptorAdapter only supports target.kind === 'url'.");
     }
@@ -126,7 +123,6 @@ export class LighterceptorAdapter implements NetworkInterceptorAdapter {
 
       if (record.response) {
         const headers = record.response.headers || {};
-        const resourceType = inferResourceType(record.source, headers);
         const responseEvent: NetworkResponseEvent = {
           type: "response",
           requestId: requestEvent.requestId,

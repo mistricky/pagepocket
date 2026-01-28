@@ -1,5 +1,5 @@
-import { sleep } from "./utils";
 import type { CompletionContext, CompletionStrategy } from "./types";
+import { sleep } from "./utils";
 
 export const timeout = (ms: number): CompletionStrategy => ({
   async wait() {

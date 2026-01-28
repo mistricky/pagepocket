@@ -1,7 +1,7 @@
 import { readBinary, remove, write } from "@pagepocket/uni-fs";
 
-import { hashString, toUint8Array } from "./utils";
 import type { BodySource, ContentRef, ContentStore } from "./types";
+import { hashString, toUint8Array } from "./utils";
 
 type HybridContentStoreOptions = {
   thresholdBytes?: number;
@@ -63,9 +63,7 @@ export class HybridContentStore implements ContentStore {
   async dispose(): Promise<void> {
     const entries = Array.from(this.storedIds);
     this.storedIds.clear();
-    await Promise.all(
-      entries.map((id) => remove(`${this.baseDir}/${id}`, "bin").catch(() => {}))
-    );
+    await Promise.all(entries.map((id) => remove(`${this.baseDir}/${id}`, "bin").catch(() => {})));
     await this.removeBaseDir().catch(() => {});
   }
 

@@ -1,9 +1,13 @@
-import type { ApiSnapshot, ContentStore, PageSnapshot, PathResolver } from "./types";
-import type { ApiEntry, StoredResource } from "./network-store";
-import { createDefaultPathResolver, resolveCrossOrigin, withPrefixPathResolver } from "./path-resolver";
-import { createPageSnapshot } from "./snapshot";
 import { rewriteCssText } from "./css-rewrite";
+import type { ApiEntry, StoredResource } from "./network-store";
+import {
+  createDefaultPathResolver,
+  resolveCrossOrigin,
+  withPrefixPathResolver
+} from "./path-resolver";
 import { rewriteEntryHtml, rewriteJsText } from "./rewrite-links";
+import { createPageSnapshot } from "./snapshot";
+import type { ApiSnapshot, ContentStore, PageSnapshot, PathResolver } from "./types";
 import { decodeUtf8, ensureLeadingSlash, sanitizePosixPath } from "./utils";
 
 type BuildOptions = {
@@ -66,7 +70,9 @@ const groupResources = (input: {
   apiEntries: ApiEntry[];
   warnings: string[];
 }) => {
-  const documents = input.resources.filter((resource) => resource.request.resourceType === "document");
+  const documents = input.resources.filter(
+    (resource) => resource.request.resourceType === "document"
+  );
   const hasFrameId = input.resources.some((resource) => !!resource.request.frameId);
 
   const primaryDoc: StoredResource | undefined =
@@ -113,7 +119,7 @@ const groupResources = (input: {
   }
 
   const primaryGroup = primaryDoc
-    ? groups.get(primaryDoc.request.frameId ?? primaryDoc.request.requestId) ?? null
+    ? (groups.get(primaryDoc.request.frameId ?? primaryDoc.request.requestId) ?? null)
     : null;
 
   const groupByUrl = new Map<string, DocumentGroup>();
@@ -127,8 +133,9 @@ const groupResources = (input: {
     }
     const frameId = resource.request.frameId;
     const byFrame = frameId ? groups.get(frameId) : undefined;
-    const byInitiator =
-      resource.request.initiator?.url ? groupByUrl.get(resource.request.initiator.url) : undefined;
+    const byInitiator = resource.request.initiator?.url
+      ? groupByUrl.get(resource.request.initiator.url)
+      : undefined;
     const target = byFrame ?? byInitiator ?? primaryGroup ?? Array.from(groups.values())[0];
     if (target) {
       target.resources.push(resource);
@@ -138,8 +145,9 @@ const groupResources = (input: {
   for (const entry of input.apiEntries) {
     const frameId = entry.request.frameId;
     const byFrame = frameId ? groups.get(frameId) : undefined;
-    const byInitiator =
-      entry.request.initiator?.url ? groupByUrl.get(entry.request.initiator.url) : undefined;
+    const byInitiator = entry.request.initiator?.url
+      ? groupByUrl.get(entry.request.initiator.url)
+      : undefined;
     const target = byFrame ?? byInitiator ?? primaryGroup ?? Array.from(groups.values())[0];
     if (target) {
       target.apiEntries.push(entry);

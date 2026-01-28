@@ -189,9 +189,10 @@ export const toZip = async (
   ]);
 
   const zipBytes = concatBytes([...localChunks, centralDirectory, endRecord]);
-  const output = options?.asBlob && typeof Blob !== "undefined"
-    ? new Blob([zipBytes], { type: "application/zip" })
-    : zipBytes;
+  const output =
+    options?.asBlob && typeof Blob !== "undefined"
+      ? new Blob([zipBytes], { type: "application/zip" })
+      : zipBytes;
 
   if (options?.clearCache ?? true) {
     await snapshot.content.dispose?.();

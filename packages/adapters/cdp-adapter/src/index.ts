@@ -8,10 +8,9 @@ import type {
   NetworkResponseEvent,
   ResourceType
 } from "@pagepocket/lib";
-import CDP from "chrome-remote-interface";
-import type CDPTypes from "chrome-remote-interface";
+import CDP, { type Options as CdpOptions } from "chrome-remote-interface";
 
-type CdpConnectionOptions = CDPTypes.Options;
+type CdpConnectionOptions = CdpOptions;
 
 type CdpClient = {
   send?: (method: string, params?: Record<string, unknown>) => Promise<unknown>;
@@ -149,11 +148,7 @@ const callCdp = async <T>(
   throw new Error(`CDP session missing method ${method}.`);
 };
 
-const subscribe = (
-  client: CdpClient,
-  eventName: string,
-  handler: (payload: unknown) => void
-) => {
+const subscribe = (client: CdpClient, eventName: string, handler: (payload: unknown) => void) => {
   if (typeof client.on === "function") {
     client.on(eventName, handler);
     return () => client.off?.(eventName, handler);
