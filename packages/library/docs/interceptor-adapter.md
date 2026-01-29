@@ -22,8 +22,7 @@ interface NetworkInterceptorAdapter {
 type InterceptTarget =
   | { kind: "url"; url: string }
   | { kind: "puppeteer-page"; page: unknown }
-  | { kind: "cdp-tab"; tabId: number }
-  | { kind: "cdp-session"; session: unknown };
+  | { kind: "cdp-tab"; tabId: number };
 ```
 
 - `kind: 'url'`: the adapter performs navigation (if it implements `session.navigate`).

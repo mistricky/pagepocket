@@ -152,7 +152,7 @@ interface CaptureOptions {
 拦截器需要知道“拦截谁”：
 
 - Puppeteer：一个 page 或浏览器上下文
-- CDP：一个 session 或 tabId
+- CDP：一个 tabId
 
 统一抽象：
 
@@ -160,8 +160,7 @@ interface CaptureOptions {
 type InterceptTarget =
   | { kind: "url"; url: string } // 拦截器自行导航（Node 常用）
   | { kind: "puppeteer-page"; page: unknown } // 由上层传入（实现侧自行断言）
-  | { kind: "cdp-tab"; tabId: number } // extension 常用
-  | { kind: "cdp-session"; session: unknown }; // Node raw CDP
+  | { kind: "cdp-tab"; tabId: number }; // extension 常用
 ```
 
 > 说明：设计上允许 `unknown`，避免在 core package 引入 puppeteer 类型依赖。
@@ -575,10 +574,10 @@ await snapshot.toDirectory("./out");
   - `canGetResponseBody = true`
   - `providesResourceType = true`
 
-### 14.2 CDPInterceptorAdapter（Node 或 Extension）
+### 14.2 CDPInterceptorAdapter（Extension）
 
 - target 通常为：
-  - `{kind:'cdp-session', session}` 或 `{kind:'cdp-tab', tabId}`
+  - `{kind:'cdp-tab', tabId}`
 - capabilities 通常：
   - `canGetResponseBody = true`（通过 `Network.getResponseBody`）
   - `providesResourceType = true`

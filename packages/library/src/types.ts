@@ -67,8 +67,7 @@ export interface InterceptorCapabilities {
 export type InterceptTarget =
   | { kind: "url"; url: string }
   | { kind: "puppeteer-page"; page: unknown }
-  | { kind: "cdp-tab"; tabId: number }
-  | { kind: "cdp-session"; session: unknown };
+  | { kind: "cdp-tab"; tabId: number };
 
 export type InterceptOptions = Record<string, unknown>;
 export type NavigateOptions = Record<string, unknown>;

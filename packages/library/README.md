@@ -17,7 +17,7 @@ import { PagePocket } from "@pagepocket/lib";
 import { CdpAdapter } from "@pagepocket/cdp-adapter";
 
 const interceptor = new CdpAdapter();
-const snapshot = await PagePocket.fromURL("https://example.com").capture({
+const snapshot = await PagePocket.fromTarget({ kind: "cdp-tab", tabId: 123 }).capture({
   interceptor
 });
 
